@@ -145,9 +145,6 @@ class FOMC (object):
             speaker = "None"
         return speaker
 
-    def _pdf_to_text(self, link):
-        pdf_socket = urlopen
-
     def _add_article(self, link, index=None):
         '''
         adds the related article for 1 link into the instance variable
@@ -164,21 +161,51 @@ class FOMC (object):
 
         # date of the article content
         self.dates.append(article_date)
+
+        # get speaker for speech
         if self.content_type == 'speech':
             self.speaker.append(self._speaker_from_link(link))
 
+        # Scripts are provided only in pdf. Save the pdf and pass the content
         if self.content_type == 'script':
             res = requests.get(link_url)
             pdf_filepath = self.base_dir + 'script_pdf/FOMC_PresConfScript_' + article_date.replace('/', '-') + '.pdf'
             with open(pdf_filepath, 'wb') as f:
                 f.write(res.content)
             pdf_file_parsed = parser.from_file(pdf_filepath)
-            self.articles[index] = pdf_file_parsed['content'].strip()
+            paragraphs = re.sub('(\n)(\n)+', '\n', pdf_file_parsed['content'].strip())
+            paragraphs = paragraphs.split('\n')
+
+            section = -1
+            paragraph_sections = []
+            for paragraph in paragraphs:
+                if len(re.findall(r'[A-Z]', paragraph[:10])) > 5 and not re.search('present', paragraph[:10].lower()) :
+                    section += 1
+                    paragraph_sections.append("")
+                if section >= 0:
+                    if not re.search('^(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)', paragraph.lower()):
+                        if not re.search('^page', paragraph.lower()):
+                            paragraph_sections[section] += paragraph
+            self.articles[index] = "\n\n[SECTION]\n\n".join([paragraph for paragraph in paragraph_sections])
         else:
             article_socket = urlopen(self.base_url + link)
             article = BeautifulSoup(article_socket, 'html.parser')
+            if str(article).count('</p>') < 5:
+                article = BeautifulSoup(str(article).replace('<p>', '</p><p>'), 'html.parser')
             paragraphs = article.findAll('p')
-            self.articles[index]= "\n\n".join([paragraph.get_text().strip() for paragraph in paragraphs])
+            self.articles[index] = "\n\n[SECTION]\n\n".join([paragraph.get_text().strip() for paragraph in paragraphs])
+
+            # self.articles[index]= ""
+            # for paragraph in paragraphs:
+        #         text = paragraph.get_text().strip()
+        #         input_words = re.findall(r'\b([a-zA-Z]+n\'t|[a-zA-Z]+\'s|[a-zA-Z]+)\b', text.lower())
+        #         if len(input_words) > 150:
+        #             self.articles[index] += "\n\n[SECTION]\n\n" + text
+        # else:
+        #     article_socket = urlopen(self.base_url + link)
+        #     article = BeautifulSoup(article_socket, 'html.parser')
+        #     paragraphs = article.findAll('p')
+        #     self.articles[index]= "\n\n".join([paragraph.get_text().strip() for paragraph in paragraphs])
 
     def _get_articles_multi_threaded(self):
         '''
@@ -203,8 +230,8 @@ class FOMC (object):
         for t in jobs:
             t.join()
 
-        for row in range(len(self.articles)):
-            self.articles[row] = self.articles[row].strip()
+        #for row in range(len(self.articles)):
+        #    self.articles[row] = self.articles[row].strip()
 
     def get_contents(self, from_year=1990):
         '''
