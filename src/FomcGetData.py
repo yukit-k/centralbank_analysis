@@ -13,37 +13,63 @@ import requests
 
 class FOMC (object):
     '''
-    A convenient class for extracting meeting minutes from the FOMC website
+    A convenient class for extracting documents from the FOMC website
     Example Usage:  
-        fomc = FOMC()
+        fomc_chair = FOMCChair()
         df = fomc.get_statements()
         fomc.pickle("./df_minutes.pickle")
     '''
 
-    def __init__(self, content_type = 'statement',
-                 base_url='https://www.federalreserve.gov', 
-                 calendar_url='https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm',
-                 speech_base_url='https://www.federalreserve.gov/newsevents/speech',
-                 historical_date_statement = 2014,
-                 historical_date_speech = 2010,
+    def __init__(self,
+                 content_type = 'statement',
                  verbose = True,
                  max_threads = 10,
                  base_dir = '../data/FOMC/'):
 
-        self.content_type = content_type
-        self.base_url = base_url
-        self.calendar_url = calendar_url
-        self.speech_base_url = speech_base_url
         self.df = None
         self.links = None
         self.dates = None
         self.articles = None
         self.speaker = None
+        self.title = None
+
+        self.content_type = content_type
         self.verbose = verbose
-        self.HISTORICAL_DATE_STATEMENT = historical_date_statement
-        self.HISTORICAL_DATE_SPEECH = historical_date_speech
         self.MAX_THREADS = max_threads
         self.base_dir = base_dir
+
+        self.base_url = 'https://www.federalreserve.gov'
+        self.calendar_url = 'https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm'
+        self.speech_base_url = 'https://www.federalreserve.gov/newsevents/speech'
+
+        self.chair = pd.DataFrame(
+            data=[["Greenspan", "Alan", "1987-08-11", "2006-01-31"], 
+                  ["Bernanke", "Ben", "2006-02-01", "2014-01-31"], 
+                  ["Yellen", "Janet", "2014-02-03", "2018-02-03"],
+                  ["Powell", "Jerome", "2018-02-05", "2022-02-05"]],
+            columns=["Surname", "FirstName", "FromDate", "ToDate"])
+
+    def _date_from_link(self, link):
+        #print(link)
+        date = re.findall('[0-9]{8}', link)[0]
+        if date[4] == '0':
+            date = "{}-{}-{}".format(date[:4], date[5:6], date[6:])
+        else:
+            date = "{}-{}-{}".format(date[:4], date[4:6], date[6:])
+        return date
+
+    def _speaker_from_date(self, article_date):
+        if self.chair.FromDate[0] < article_date and article_date < self.chair.ToDate[0]:
+            speaker = self.chair.FirstName[0] + " " + self.chair.Surname[0]
+        elif self.chair.FromDate[1] < article_date and article_date < self.chair.ToDate[1]:
+            speaker = self.chair.FirstName[1] + " " + self.chair.Surname[1]
+        elif self.chair.FromDate[2] < article_date and article_date < self.chair.ToDate[2]:
+            speaker = self.chair.FirstName[2] + " " + self.chair.Surname[2]
+        elif self.chair.FromDate[3] < article_date and article_date < self.chair.ToDate[3]:
+            speaker = self.chair.FirstName[3] + " " + self.chair.Surname[3]
+        else:
+            speaker = "other"
+        return speaker
 
     def _get_links(self, from_year):
         '''
@@ -53,21 +79,26 @@ class FOMC (object):
 
         '''
         self.links = []
+        self.title = []
+        self.speaker = []
+
         fomc_meetings_socket = urlopen(self.calendar_url)
         soup = BeautifulSoup(fomc_meetings_socket, 'html.parser')
-
+        
+        # Getting links from current page
         if self.content_type in ('statement', 'minutes', 'script'):
-            if self.content_type == 'statement':
-                if self.verbose: print("Getting links for statements...")
-                contents = soup.find_all('a', href=re.compile('^/newsevents/pressreleases/monetary\d{8}[ax].htm'))
+            if self.content_type in ('statement', 'minutes'):
+                if self.content_type == 'statement':
+                    if self.verbose: print("Getting links for statements...")
+                    contents = soup.find_all('a', href=re.compile('^/newsevents/pressreleases/monetary\d{8}[ax].htm'))
+                else:
+                    if self.verbose: print("Getting links for minutes...")
+                    contents = soup.find_all('a', href=re.compile('^/monetarypolicy/fomcminutes\d{8}.htm'))
                 self.links = [content.attrs['href'] for content in contents]
+                self.speaker = [self._speaker_from_date(self._date_from_link(x)) for x in self.links]
+                self.title = [self.content_type] * len(self.links)
                 if self.verbose: print("{} links found in the current page.".format(len(self.links)))
-            elif self.content_type == 'minutes':
-                if self.verbose: print("Getting links for minutes...")
-                contents = soup.find_all('a', href=re.compile('^/monetarypolicy/fomcminutes\d{8}.htm'))
-                self.links = [content.attrs['href'] for content in contents]
-                if self.verbose: print("{} links found in the current page.".format(len(self.links)))
-            elif self.content_type == 'script':
+            else:
                 if self.verbose: print("Getting links for press conference scripts...")
                 presconfs = soup.find_all('a', href=re.compile('^/monetarypolicy/fomcpresconf\d{8}.htm'))
                 presconf_urls = [self.base_url + presconf.attrs['href'] for presconf in presconfs]
@@ -79,9 +110,12 @@ class FOMC (object):
                     for content in contents:
                         #print(content)
                         self.links.append(content.attrs['href'])
-
-            if from_year <= self.HISTORICAL_DATE_STATEMENT:
-                for year in range(from_year, self.HISTORICAL_DATE_STATEMENT + 1):
+                        self.speaker.append(self._speaker_from_date(self._date_from_link(content.attrs['href'])))
+                        self.title.append(self.content_type)
+            if self.verbose: print("{} links found in current page.".format(len(self.links)))
+            # Archived before 2015
+            if from_year <= 2014:
+                for year in range(from_year, 2015):
                     fomc_yearly_url = self.base_url + '/monetarypolicy/fomchistorical' + str(year) + '.htm'
                     fomc_yearly_socket = urlopen(fomc_yearly_url)
                     soup_yearly = BeautifulSoup(fomc_yearly_socket, 'html.parser')
@@ -91,59 +125,45 @@ class FOMC (object):
                         yearly_pages = soup_yearly.find_all('a', href=re.compile('(^/monetarypolicy/fomcminutes|^/fomc/minutes|^/fomc/MINUTES)'))
                     elif self.content_type == 'script':
                         yearly_pages = soup_yearly.find_all('a', href=re.compile('^/monetarypolicy/files/FOMC\d{8}meeting.pdf'))
-                    
+
                     for yearly_page in yearly_pages:
                         self.links.append(yearly_page.attrs['href'])
+                        self.speaker.append(self._speaker_from_date(self._date_from_link(yearly_page.attrs['href'])))
+                        self.title.append(self.content_type)
                     if self.verbose: print("YEAR: {} - {} links found.".format(year, len(yearly_pages)))
 
             print("There are total ", len(self.links), ' links for ', self.content_type)
+
+        # Speech 
         elif self.content_type == 'speech':
             if self.verbose: print("Getting links for speeches...")
-            self.links = []
             to_year = date.today().strftime("%Y")
-            if from_year < 1996:
-                print("Archive only exist up to 1996, so setting from_year as 1996...")
+
+            if from_year <= 1995:
+                print("Archive only from 1996, so setting from_year as 1996...")
                 from_year = 1996
-            if from_year <= self.HISTORICAL_DATE_SPEECH:
-                for year in range(from_year, self.HISTORICAL_DATE_SPEECH+1):
-                    fomc_speeches_yearly_url = self.speech_base_url + '/' + str(year) + 'speech.htm'
-                    # print(fomc_speeches_yearly_url)
-                    fomc_speeches_yearly_socket = urlopen(fomc_speeches_yearly_url)
-                    soup_speeches_yearly = BeautifulSoup(fomc_speeches_yearly_socket, 'html.parser')
-                    speeches_historical = soup_speeches_yearly.findAll('a', href=re.compile('^/newsevents/speech/.*\d{8}.*.htm|^/boarddocs/speeches/\d{4}/|d{8}.*.htm'))
-                    for speech_historical in speeches_historical:
-                        self.links.append(speech_historical.attrs['href'])
-                    if self.verbose: print("YEAR: {} - {} speeches found.".format(year, len(speeches_historical)))
-                from_year = self.HISTORICAL_DATE_SPEECH+1
-            from_year = np.max([from_year, self.HISTORICAL_DATE_SPEECH+1])
+
+            # Archived between 1996 and 2005, URL changed from 2011
+
             for year in range(from_year, int(to_year)+1):
-                fomc_speeches_yearly_url = self.speech_base_url + '/' + str(year) + '-speeches.htm'
-                fomc_speeches_yearly_socket = urlopen(fomc_speeches_yearly_url)
-                soup_speeches_yearly = BeautifulSoup(fomc_speeches_yearly_socket, 'html.parser')
-                speeches_historical = soup_speeches_yearly.findAll('a', href=re.compile('newsevents/speech/.*\d{8}.*.htm'))
-                for speech_historical in speeches_historical:
-                    self.links.append(speech_historical.attrs['href'])
-                if self.verbose:
-                    print("YEAR: {} - {} speeches found.".format(year, len(speeches_historical)))
+                if year < 2011:
+                    speech_url = self.speech_base_url + '/' + str(year) + 'speech.htm'
+                else:
+                    speech_url = self.speech_base_url + '/' + str(year) + '-speeches.htm'
+
+                speech_socket = urlopen(speech_url)
+                soup_speech = BeautifulSoup(speech_socket, 'html.parser')
+                speech_links = soup_speech.findAll('a', href=re.compile('^/?newsevents/speech/.*{}\d\d\d\d.*.htm|^/boarddocs/speeches/{}/|^{}\d\d\d\d.*.htm'.format(str(year), str(year), str(year))))
+                for speech_link in speech_links:
+                    self.links.append(speech_link.attrs['href'])
+                    self.title.append(speech_link.get_text())
+                    # print(speech_url)
+                    # print(speech_link.attrs['href'])
+
+                    self.speaker.append(speech_link.parent.next_sibling.next_element.get_text().replace('\n', '').strip())
+                if self.verbose: print("YEAR: {} - {} speeches found.".format(year, len(speech_links)))
         else:
             print("Wrong Content Type")
-
-    def _date_from_link(self, link):
-        print(link)
-        date = re.findall('[0-9]{8}', link)[0]
-        if date[4] == '0':
-            date = "{}/{}/{}".format(date[:4], date[5:6], date[6:])
-        else:
-            date = "{}/{}/{}".format(date[:4], date[4:6], date[6:])
-        return date
-
-    def _speaker_from_link(self, link):
-        speaker_search = re.search('newsevents/speech/(.*)\d{8}(.*)', link)
-        if speaker_search:
-            speaker = speaker_search.group(1)
-        else:
-            speaker = "None"
-        return speaker
 
     def _add_article(self, link, index=None):
         '''
@@ -159,17 +179,15 @@ class FOMC (object):
         link_url = self.base_url + link
         article_date = self._date_from_link(link)
 
+        #print(link_url)
+
         # date of the article content
         self.dates.append(article_date)
-
-        # get speaker for speech
-        if self.content_type == 'speech':
-            self.speaker.append(self._speaker_from_link(link))
 
         # Scripts are provided only in pdf. Save the pdf and pass the content
         if self.content_type == 'script':
             res = requests.get(link_url)
-            pdf_filepath = self.base_dir + 'script_pdf/FOMC_PresConfScript_' + article_date.replace('/', '-') + '.pdf'
+            pdf_filepath = self.base_dir + 'script_pdf/FOMC_PresConfScript_' + article_date + '.pdf'
             with open(pdf_filepath, 'wb') as f:
                 f.write(res.content)
             pdf_file_parsed = parser.from_file(pdf_filepath)
@@ -214,7 +232,7 @@ class FOMC (object):
         if self.verbose:
             print("Getting articles - Multi-threaded...")
 
-        self.dates, self.speaker, self.articles = [], [], ['']*len(self.links)
+        self.dates, self.articles = [], ['']*len(self.links)
         jobs = []
         # initiate and start threads:
         index = 0
@@ -240,10 +258,12 @@ class FOMC (object):
         '''
         self._get_links(from_year)
         self._get_articles_multi_threaded()
-        self.df = pd.DataFrame(self.articles, index=pd.to_datetime(self.dates)).sort_index()
-        self.df.columns = ['contents']
-        if self.content_type == 'speech':
-            self.df.speaker = self.speaker
+        dict = {
+            'contents': self.articles,
+            'speaker': self.speaker, 
+            'title': self.title
+        }
+        self.df = pd.DataFrame(dict, index=pd.to_datetime(self.dates)).sort_index()
         return self.df
 
     def pickle_dump_df(self, filename="output.pickle"):
@@ -254,10 +274,7 @@ class FOMC (object):
 
     def save_texts(self, prefix="FOMC_", target="contents"):
         for i in range(self.df.shape[0]):
-            if self.content_type == 'speech':
-                filepath = self.base_dir + prefix + self.df.index.strftime('%Y-%m-%d')[i] + '_' + self.df.speaker[i] + ".txt"
-            else:
-                filepath = self.base_dir + prefix + self.df.index.strftime('%Y-%m-%d')[i] + ".txt"
+            filepath = self.base_dir + prefix + self.df.index.strftime('%Y-%m-%d')[i] + ".txt"
             if self.verbose: print("Writing to ", filepath)
             with open(filepath, "w") as output_file:
                 output_file.write(self.df.iloc[i][target])
