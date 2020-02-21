@@ -48,7 +48,7 @@ class FOMC (object):
                   ["Yellen", "Janet", "2014-02-03", "2018-02-03"],
                   ["Powell", "Jerome", "2018-02-05", "2022-02-05"]],
             columns=["Surname", "FirstName", "FromDate", "ToDate"])
-
+        
     def _date_from_link(self, link):
         #print(link)
         date = re.findall('[0-9]{8}', link)[0]
@@ -197,13 +197,12 @@ class FOMC (object):
             section = -1
             paragraph_sections = []
             for paragraph in paragraphs:
-                if len(re.findall(r'[A-Z]', paragraph[:10])) > 5 and not re.search('present', paragraph[:10].lower()) :
-                    section += 1
-                    paragraph_sections.append("")
-                if section >= 0:
-                    if not re.search('^(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)', paragraph.lower()):
-                        if not re.search('^page', paragraph.lower()):
-                            paragraph_sections[section] += paragraph
+                if not re.search('^(page|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)', paragraph.lower()):
+                    if len(re.findall(r'[A-Z]', paragraph[:10])) > 5 and not re.search('(present|frb/us|abs cdo|libor|rp–ioer|lsaps|cusip|nairu|s cpi|clos, r)', paragraph[:10].lower()):
+                        section += 1
+                        paragraph_sections.append("")
+                    if section >= 0:
+                        paragraph_sections[section] += paragraph
             self.articles[index] = "\n\n[SECTION]\n\n".join([paragraph for paragraph in paragraph_sections])
         else:
             article_socket = urlopen(self.base_url + link)
