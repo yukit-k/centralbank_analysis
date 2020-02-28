@@ -85,8 +85,9 @@ class FOMC (object):
         fomc_meetings_socket = urlopen(self.calendar_url)
         soup = BeautifulSoup(fomc_meetings_socket, 'html.parser')
         
-        # Getting links from current page
-        if self.content_type in ('statement', 'minutes', 'script'):
+        # Differentiate the process for Speech from the others
+        if self.content_type in ('statement', 'minutes', 'script', 'meeting_script'):
+            # Getting links from current page. Meetin scripts are not available.
             if self.content_type in ('statement', 'minutes'):
                 if self.content_type == 'statement':
                     if self.verbose: print("Getting links for statements...")
@@ -98,7 +99,7 @@ class FOMC (object):
                 self.speaker = [self._speaker_from_date(self._date_from_link(x)) for x in self.links]
                 self.title = [self.content_type] * len(self.links)
                 if self.verbose: print("{} links found in the current page.".format(len(self.links)))
-            else:
+            elif self.content_type == 'script':
                 if self.verbose: print("Getting links for press conference scripts...")
                 presconfs = soup.find_all('a', href=re.compile('^/monetarypolicy/fomcpresconf\d{8}.htm'))
                 presconf_urls = [self.base_url + presconf.attrs['href'] for presconf in presconfs]
@@ -111,27 +112,47 @@ class FOMC (object):
                         #print(content)
                         self.links.append(content.attrs['href'])
                         self.speaker.append(self._speaker_from_date(self._date_from_link(content.attrs['href'])))
-                        self.title.append(self.content_type)
+                        self.title.append('Press Conference Transcript')
             if self.verbose: print("{} links found in current page.".format(len(self.links)))
             # Archived before 2015
             if from_year <= 2014:
                 for year in range(from_year, 2015):
+                    yearly_contents = []
                     fomc_yearly_url = self.base_url + '/monetarypolicy/fomchistorical' + str(year) + '.htm'
                     fomc_yearly_socket = urlopen(fomc_yearly_url)
                     soup_yearly = BeautifulSoup(fomc_yearly_socket, 'html.parser')
-                    if self.content_type == 'statement':
-                        yearly_pages = soup_yearly.findAll('a', text = 'Statement')
-                    elif self.content_type == 'minutes':
-                        yearly_pages = soup_yearly.find_all('a', href=re.compile('(^/monetarypolicy/fomcminutes|^/fomc/minutes|^/fomc/MINUTES)'))
+                    if self.content_type in ('statement', 'minutes'):
+                        if self.content_type == 'statement':
+                            yearly_contents = soup_yearly.findAll('a', text = 'Statement')
+                        elif self.content_type == 'minutes':
+                            yearly_contents = soup_yearly.find_all('a', href=re.compile('(^/monetarypolicy/fomcminutes|^/fomc/minutes|^/fomc/MINUTES)'))
+                        for yearly_content in yearly_contents:
+                            self.links.append(yearly_content.attrs['href'])
+                            self.speaker.append(self._speaker_from_date(self._date_from_link(yearly_content.attrs['href'])))
+                            self.title.append(self.content_type)
+                        if self.verbose: print("YEAR: {} - {} links found.".format(year, len(yearly_contents)))
                     elif self.content_type == 'script':
-                        yearly_pages = soup_yearly.find_all('a', href=re.compile('^/monetarypolicy/files/FOMC\d{8}meeting.pdf'))
-
-                    for yearly_page in yearly_pages:
-                        self.links.append(yearly_page.attrs['href'])
-                        self.speaker.append(self._speaker_from_date(self._date_from_link(yearly_page.attrs['href'])))
-                        self.title.append(self.content_type)
-                    if self.verbose: print("YEAR: {} - {} links found.".format(year, len(yearly_pages)))
-
+                        if self.verbose: print("Getting links for historical press conference scripts...")
+                        presconf_hists = soup_yearly.find_all('a', href=re.compile('^/monetarypolicy/fomcpresconf\d{8}.htm'))
+                        presconf_hist_urls = [self.base_url + presconf_hist.attrs['href'] for presconf_hist in presconf_hists]
+                        for presconf_hist_url in presconf_hist_urls:
+                            #print(presconf_hist_url)
+                            presconf_hist_socket = urlopen(presconf_hist_url)
+                            soup_presconf_hist = BeautifulSoup(presconf_hist_socket, 'html.parser')
+                            yearly_contents = soup_presconf_hist.find_all('a', href=re.compile('^/mediacenter/files/FOMCpresconf\d{8}.pdf'))
+                            for yearly_content in yearly_contents:
+                                #print(yearly_content)
+                                self.links.append(yearly_content.attrs['href'])
+                                self.speaker.append(self._speaker_from_date(self._date_from_link(yearly_content.attrs['href'])))
+                                self.title.append('Press Conference Transcript')
+                        if self.verbose: print("YEAR: {} - {} links found.".format(year, len(presconf_hist_urls)))
+                    elif self.content_type == 'meeting_script':
+                        meeting_scripts = soup_yearly.find_all('a', href=re.compile('^/monetarypolicy/files/FOMC\d{8}meeting.pdf'))
+                        for meeting_script in meeting_scripts:
+                            self.links.append(meeting_script.attrs['href'])
+                            self.speaker.append(self._speaker_from_date(self._date_from_link(meeting_script.attrs['href'])))
+                            self.title.append('Meeting Transcript')
+                        if self.verbose: print("YEAR: {} - {} meeting scripts found.".format(year, len(meeting_scripts)))
             print("There are total ", len(self.links), ' links for ', self.content_type)
 
         # Speech 
@@ -185,9 +206,12 @@ class FOMC (object):
         self.dates.append(article_date)
 
         # Scripts are provided only in pdf. Save the pdf and pass the content
-        if self.content_type == 'script':
+        if self.content_type in ('script', 'meeting_script'):
             res = requests.get(link_url)
-            pdf_filepath = self.base_dir + 'script_pdf/FOMC_PresConfScript_' + article_date + '.pdf'
+            if self.content_type == 'script':
+                pdf_filepath = self.base_dir + 'script_pdf/FOMC_PresConfScript_' + article_date + '.pdf'
+            elif self.content_type == 'meeting_script':
+                pdf_filepath = self.base_dir + 'script_pdf/FOMC_MeetingScript_' + article_date + '.pdf'
             with open(pdf_filepath, 'wb') as f:
                 f.write(res.content)
             pdf_file_parsed = parser.from_file(pdf_filepath)
@@ -284,11 +308,11 @@ if __name__ == '__main__':
     
     if len(sys.argv) != 2:
         print("Usage: ", pg_name)
-        print("Please specify ONE argument from ('statement', 'minutes', 'script', 'speech')")
+        print("Please specify ONE argument from ('statement', 'minutes', 'script', 'meeting_script', 'speech')")
         sys.exit(1)
-    if args[0].lower() not in ('statement', 'minutes', 'script', 'speech'):
+    if args[0].lower() not in ('statement', 'minutes', 'script', 'meeting_script', 'speech'):
         print("Usage: ", pg_name)
-        print("Please specify ONE argument from ('statement', 'minutes', 'script', 'speech')")
+        print("Please specify ONE argument from ('statement', 'minutes', 'script', 'meeting_script', 'speech')")
         sys.exit(1)
     else:
         fomc = FOMC(content_type=args[0])
