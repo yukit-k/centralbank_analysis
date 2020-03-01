@@ -1,6 +1,6 @@
 from __future__ import print_function
 from bs4 import BeautifulSoup
-from urllib.request import urlopen
+import requests
 from datetime import date
 import re
 import numpy as np
@@ -9,7 +9,6 @@ import pickle
 import threading
 import sys
 from tika import parser
-import requests
 
 class FOMC (object):
     '''
@@ -82,8 +81,8 @@ class FOMC (object):
         self.title = []
         self.speaker = []
 
-        fomc_meetings_socket = urlopen(self.calendar_url)
-        soup = BeautifulSoup(fomc_meetings_socket, 'html.parser')
+        r = requests.get(self.calendar_url)
+        soup = BeautifulSoup(r.text, 'html.parser')
         
         # Differentiate the process for Speech from the others
         if self.content_type in ('statement', 'minutes', 'script', 'meeting_script'):
@@ -105,8 +104,8 @@ class FOMC (object):
                 presconf_urls = [self.base_url + presconf.attrs['href'] for presconf in presconfs]
                 for presconf_url in presconf_urls:
                     # print(presconf_url)
-                    presconf_socket = urlopen(presconf_url)
-                    soup_presconf = BeautifulSoup(presconf_socket, 'html.parser')
+                    r_presconf = requests.get(presconf_url)
+                    soup_presconf = BeautifulSoup(r_presconf, 'html.parser')
                     contents = soup_presconf.find_all('a', href=re.compile('^/mediacenter/files/FOMCpresconf\d{8}.pdf'))
                     for content in contents:
                         #print(content)
@@ -119,8 +118,8 @@ class FOMC (object):
                 for year in range(from_year, 2015):
                     yearly_contents = []
                     fomc_yearly_url = self.base_url + '/monetarypolicy/fomchistorical' + str(year) + '.htm'
-                    fomc_yearly_socket = urlopen(fomc_yearly_url)
-                    soup_yearly = BeautifulSoup(fomc_yearly_socket, 'html.parser')
+                    r_year = requests.get(fomc_yearly_url)
+                    soup_yearly = BeautifulSoup(r_year.text, 'html.parser')
                     if self.content_type in ('statement', 'minutes'):
                         if self.content_type == 'statement':
                             yearly_contents = soup_yearly.findAll('a', text = 'Statement')
@@ -137,8 +136,8 @@ class FOMC (object):
                         presconf_hist_urls = [self.base_url + presconf_hist.attrs['href'] for presconf_hist in presconf_hists]
                         for presconf_hist_url in presconf_hist_urls:
                             #print(presconf_hist_url)
-                            presconf_hist_socket = urlopen(presconf_hist_url)
-                            soup_presconf_hist = BeautifulSoup(presconf_hist_socket, 'html.parser')
+                            r_presconf_hist = requests.get(presconf_hist_url)
+                            soup_presconf_hist = BeautifulSoup(r_presconf_hist.text, 'html.parser')
                             yearly_contents = soup_presconf_hist.find_all('a', href=re.compile('^/mediacenter/files/FOMCpresconf\d{8}.pdf'))
                             for yearly_content in yearly_contents:
                                 #print(yearly_content)
@@ -172,8 +171,8 @@ class FOMC (object):
                 else:
                     speech_url = self.speech_base_url + '/' + str(year) + '-speeches.htm'
 
-                speech_socket = urlopen(speech_url)
-                soup_speech = BeautifulSoup(speech_socket, 'html.parser')
+                r_speech = requests.get(speech_url)
+                soup_speech = BeautifulSoup(r_speech.text, 'html.parser')
                 speech_links = soup_speech.findAll('a', href=re.compile('^/?newsevents/speech/.*{}\d\d\d\d.*.htm|^/boarddocs/speeches/{}/|^{}\d\d\d\d.*.htm'.format(str(year), str(year), str(year))))
                 for speech_link in speech_links:
                     self.links.append(speech_link.attrs['href'])
@@ -229,24 +228,27 @@ class FOMC (object):
                         paragraph_sections[section] += paragraph
             self.articles[index] = "\n\n[SECTION]\n\n".join([paragraph for paragraph in paragraph_sections])
         else:
-            article_socket = urlopen(self.base_url + link)
-            article = BeautifulSoup(article_socket, 'html.parser')
-            if str(article).count('</p>') < 5:
-                article = BeautifulSoup(str(article).replace('<p>', '</p><p>'), 'html.parser')
+            res = requests.get(self.base_url + link)
+            html = res.text
+            # p tag is not properly closed in many cases
+            html = html.replace('<P', '<p').replace('</P>', '</p>')
+            html = html.replace('<p', '</p><p').replace('</p><p', '<p', 1)
+            # remove all after appendix or references
+            x = re.search(r'(<b>references|<b>appendix|<strong>references|<strong>appendix)', html.lower())
+            if x:
+                html = html[:x.start()]
+                html += '</body></html>'
+            # Parse html text by BeautifulSoup
+            article = BeautifulSoup(html, 'html.parser')
+            # Remove footnote
+            for fn in article.find_all('a', {'name': re.compile('fn\d')}):
+                if fn.parent:
+                    fn.parent.decompose()
+                else:
+                    fn.decompose()
+            # Get all p tag
             paragraphs = article.findAll('p')
             self.articles[index] = "\n\n[SECTION]\n\n".join([paragraph.get_text().strip() for paragraph in paragraphs])
-
-            # self.articles[index]= ""
-            # for paragraph in paragraphs:
-        #         text = paragraph.get_text().strip()
-        #         input_words = re.findall(r'\b([a-zA-Z]+n\'t|[a-zA-Z]+\'s|[a-zA-Z]+)\b', text.lower())
-        #         if len(input_words) > 150:
-        #             self.articles[index] += "\n\n[SECTION]\n\n" + text
-        # else:
-        #     article_socket = urlopen(self.base_url + link)
-        #     article = BeautifulSoup(article_socket, 'html.parser')
-        #     paragraphs = article.findAll('p')
-        #     self.articles[index]= "\n\n".join([paragraph.get_text().strip() for paragraph in paragraphs])
 
     def _get_articles_multi_threaded(self):
         '''
@@ -296,11 +298,20 @@ class FOMC (object):
             pickle.dump(self.df, output_file)
 
     def save_texts(self, prefix="FOMC_", target="contents"):
-        for i in range(self.df.shape[0]):
-            filepath = self.base_dir + prefix + self.df.index.strftime('%Y-%m-%d')[i] + ".txt"
+        tmp_dates = []
+        tmp_seq = 1
+        for i, row in self.df.iterrows():
+            cur_date = row.name.strftime('%Y-%m-%d')
+            if cur_date in tmp_dates:
+                tmp_seq += 1
+                filepath = self.base_dir + prefix + cur_date + "-" + str(tmp_seq) + ".txt"
+            else:
+                tmp_seq = 1
+                filepath = self.base_dir + prefix + cur_date + ".txt"
+            tmp_dates.append(cur_date)
             if self.verbose: print("Writing to ", filepath)
             with open(filepath, "w") as output_file:
-                output_file.write(self.df.iloc[i][target])
+                output_file.write(row[target])
 
 if __name__ == '__main__':
     pg_name = sys.argv[0]
