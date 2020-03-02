@@ -162,10 +162,8 @@ class FOMC (object):
             if from_year <= 1995:
                 print("Archive only from 1996, so setting from_year as 1996...")
                 from_year = 1996
-
-            # Archived between 1996 and 2005, URL changed from 2011
-
             for year in range(from_year, int(to_year)+1):
+                # Archived between 1996 and 2005, URL changed from 2011
                 if year < 2011:
                     speech_url = self.speech_base_url + '/' + str(year) + 'speech.htm'
                 else:
@@ -175,12 +173,29 @@ class FOMC (object):
                 soup_speech = BeautifulSoup(r_speech.text, 'html.parser')
                 speech_links = soup_speech.findAll('a', href=re.compile('^/?newsevents/speech/.*{}\d\d\d\d.*.htm|^/boarddocs/speeches/{}/|^{}\d\d\d\d.*.htm'.format(str(year), str(year), str(year))))
                 for speech_link in speech_links:
+                    # Sometimes the same link is put for watch live video. Skip those.
+                    if speech_link.find({'class': 'watchLive'}):
+                        continue
+                    # Add links
                     self.links.append(speech_link.attrs['href'])
                     self.title.append(speech_link.get_text())
-                    # print(speech_url)
-                    # print(speech_link.attrs['href'])
-
-                    self.speaker.append(speech_link.parent.next_sibling.next_element.get_text().replace('\n', '').strip())
+                    # Somehow the speaker is before the link in 1997 only, whereas the others is vice-versa
+                    if year == 1997:
+                        # Somehow only the linke for December 15 speech has speader after the link in 1997 page.
+                        if speech_link.get('href') == '/boarddocs/speeches/1997/19971215.htm':
+                            tmp_speaker = speech_link.parent.next_sibling.next_element.get_text().replace('\n', '').strip()
+                        else:
+                            tmp_speaker = speech_link.parent.previous_sibling.previous_sibling.get_text().replace('\n', '').strip()                        
+                    else:
+                        # Somehow 20051128 and 20051129 are structured differently
+                        if speech_link.get('href') in ('/boarddocs/speeches/2005/20051128/default.htm', '/boarddocs/speeches/2005/20051129/default.htm'):
+                            tmp_speaker = speech_link.parent.previous_sibling.previous_sibling.get_text().replace('\n', '').strip()
+                        tmp_speaker = speech_link.parent.next_sibling.next_element.get_text().replace('\n', '').strip()
+                        # When a video icon is placed between the link and speaker
+                        if tmp_speaker in ('Watch Live', 'Video'):
+                            tmp_speaker = speech_link.parent.next_sibling.next_sibling.next_sibling.next_element.get_text().replace('\n', '').strip()
+                    self.speaker.append(tmp_speaker)
+                    #print(tmp_speaker)
                 if self.verbose: print("YEAR: {} - {} speeches found.".format(year, len(speech_links)))
         else:
             print("Wrong Content Type")
