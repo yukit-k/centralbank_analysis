@@ -242,7 +242,7 @@ class FOMC (object):
                     if section >= 0:
                         paragraph_sections[section] += paragraph
             self.articles[index] = "\n\n[SECTION]\n\n".join([paragraph for paragraph in paragraph_sections])
-        else:
+        elif self.content_type in ('minutes', 'speech'):
             res = requests.get(self.base_url + link)
             html = res.text
             # p tag is not properly closed in many cases
@@ -262,6 +262,12 @@ class FOMC (object):
                 else:
                     fn.decompose()
             # Get all p tag
+            paragraphs = article.findAll('p')
+            self.articles[index] = "\n\n[SECTION]\n\n".join([paragraph.get_text().strip() for paragraph in paragraphs])
+        elif self.content_type in ('statement'):
+            res = requests.get(self.base_url + link)
+            html = res.text
+            article = BeautifulSoup(html, 'html.parser')
             paragraphs = article.findAll('p')
             self.articles[index] = "\n\n[SECTION]\n\n".join([paragraph.get_text().strip() for paragraph in paragraphs])
 
