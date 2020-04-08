@@ -8,6 +8,9 @@ import pandas as pd
 import pickle
 import threading
 import sys
+import os
+os.environ['TIKA_SERVER_JAR'] = 'https://repo1.maven.org/maven2/org/apache/tika/tika-server/1.19/tika-server-1.19.jar'
+import tika
 from tika import parser
 
 class FOMC (object):
@@ -105,7 +108,7 @@ class FOMC (object):
                 for presconf_url in presconf_urls:
                     # print(presconf_url)
                     r_presconf = requests.get(presconf_url)
-                    soup_presconf = BeautifulSoup(r_presconf, 'html.parser')
+                    soup_presconf = BeautifulSoup(r_presconf.text, 'html.parser')
                     contents = soup_presconf.find_all('a', href=re.compile('^/mediacenter/files/FOMCpresconf\d{8}.pdf'))
                     for content in contents:
                         #print(content)
