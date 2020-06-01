@@ -1,4 +1,3 @@
-from __future__ import print_function
 from bs4 import BeautifulSoup
 import requests
 from datetime import date
@@ -28,7 +27,7 @@ class FomcBase(metaclass=ABCMeta):
         # Set arguments to internal variables
         self.content_type = content_type
         self.verbose = verbose
-        self.max_threads = max_threads
+        self.MAX_THREADS = max_threads
         self.base_dir = base_dir
 
         # Initialization
