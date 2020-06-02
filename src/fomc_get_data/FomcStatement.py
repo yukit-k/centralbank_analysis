@@ -11,10 +11,7 @@ from bs4 import BeautifulSoup
 import numpy as np
 import pandas as pd
 
-os.environ['TIKA_SERVER_JAR'] = 'https://repo1.maven.org/maven2/org/apache/tika/tika-server/1.19/tika-server-1.19.jar'
-import tika
-from tika import parser
-
+# Import parent class
 from .FomcBase import FomcBase
 
 class FomcStatement(FomcBase):

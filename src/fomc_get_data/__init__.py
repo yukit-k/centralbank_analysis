@@ -1,4 +1,5 @@
 from .FomcStatement import FomcStatement
 from .FomcMinutes import FomcMinutes
-#from .FomcScript import FomcScript
-#from .FomcSpeech import FomcSpeech
+from .FomcMeetingScript import FomcMeetingScript
+from .FomcPresConfScript import FomcPresConfScript
+from .FomcSpeech import FomcSpeech

@@ -1,16 +1,16 @@
-from bs4 import BeautifulSoup
-import requests
 from datetime import date
 import re
-import numpy as np
-import pandas as pd
-import pickle
 import threading
+import pickle
 import sys
 import os
-os.environ['TIKA_SERVER_JAR'] = 'https://repo1.maven.org/maven2/org/apache/tika/tika-server/1.19/tika-server-1.19.jar'
-import tika
-from tika import parser
+
+import requests
+from bs4 import BeautifulSoup
+
+import numpy as np
+import pandas as pd
+
 from abc import ABCMeta, abstractmethod
 
 class FomcBase(metaclass=ABCMeta):
@@ -18,11 +18,7 @@ class FomcBase(metaclass=ABCMeta):
     A base class for extracting documents from the FOMC website
     '''
 
-    def __init__(self,
-                 content_type,
-                 verbose = True,
-                 max_threads = 10,
-                 base_dir = '../data/FOMC/'):
+    def __init__(self, content_type, verbose, max_threads, base_dir):
         
         # Set arguments to internal variables
         self.content_type = content_type
@@ -140,6 +136,7 @@ class FomcBase(metaclass=ABCMeta):
         Dump an internal DataFrame df to a pickle file
         '''
         filepath = self.base_dir + filename
+        print("")
         if self.verbose: print("Writing to ", filepath)
         with open(filepath, "wb") as output_file:
             pickle.dump(self.df, output_file)

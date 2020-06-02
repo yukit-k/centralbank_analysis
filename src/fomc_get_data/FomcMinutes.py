@@ -11,9 +11,7 @@ from bs4 import BeautifulSoup
 import numpy as np
 import pandas as pd
 
-import tika
-from tika import parser
-
+# Import parent class
 from .FomcBase import FomcBase
 
 class FomcMinutes(FomcBase):
