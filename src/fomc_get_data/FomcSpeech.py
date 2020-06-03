@@ -22,7 +22,7 @@ class FomcSpeech(FomcBase):
         df = fomc.get_contents()
     '''
     def __init__(self, verbose = True, max_threads = 10, base_dir = '../data/FOMC/'):
-        super().__init__('statement', verbose, max_threads, base_dir)
+        super().__init__('speech', verbose, max_threads, base_dir)
 
     def _get_links(self, from_year):
         '''

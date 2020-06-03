@@ -138,6 +138,7 @@ class FomcBase(metaclass=ABCMeta):
         filepath = self.base_dir + filename
         print("")
         if self.verbose: print("Writing to ", filepath)
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
         with open(filepath, "wb") as output_file:
             pickle.dump(self.df, output_file)
 
@@ -157,5 +158,6 @@ class FomcBase(metaclass=ABCMeta):
                 filepath = self.base_dir + prefix + cur_date + ".txt"
             tmp_dates.append(cur_date)
             if self.verbose: print("Writing to ", filepath)
+            os.makedirs(os.path.dirname(filepath), exist_ok=True)
             with open(filepath, "w") as output_file:
                 output_file.write(row[target])

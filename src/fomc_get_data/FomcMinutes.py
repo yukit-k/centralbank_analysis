@@ -47,6 +47,7 @@ class FomcMinutes(FomcBase):
 
         # Archived before 2015
         if from_year <= 2014:
+            print("Getting links from archive pages...")
             for year in range(from_year, 2015):
                 yearly_contents = []
                 fomc_yearly_url = self.base_url + '/monetarypolicy/fomchistorical' + str(year) + '.htm'

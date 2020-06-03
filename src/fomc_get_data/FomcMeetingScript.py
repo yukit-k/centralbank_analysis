@@ -11,10 +11,12 @@ from bs4 import BeautifulSoup
 import numpy as np
 import pandas as pd
 
-# User TIKA for pdf parsing
-os.environ['TIKA_SERVER_JAR'] = 'https://repo1.maven.org/maven2/org/apache/tika/tika-server/1.19/tika-server-1.19.jar'
-import tika
-from tika import parser
+# Tika depends on Java version, so use textract instead as the pdf is anyway a simple text only
+# # User TIKA for pdf parsing
+# os.environ['TIKA_SERVER_JAR'] = 'https://repo1.maven.org/maven2/org/apache/tika/tika-server/1.19/tika-server-1.19.jar'
+# import tika
+# from tika import parser
+import textract
 
 # Import parent class
 from .FomcBase import FomcBase
@@ -22,6 +24,7 @@ from .FomcBase import FomcBase
 class FomcMeetingScript(FomcBase):
     '''
     A convenient class for extracting meeting scripts from the FOMC website.
+    FOMC publishes the meeting scripts after 5 years, so this cannot be used for the prediction of the monetary policy in real-time.
 
     Example Usage:  
         fomc = FomcMeetingScript()
@@ -42,8 +45,9 @@ class FomcMeetingScript(FomcBase):
         r = requests.get(self.calendar_url)
         soup = BeautifulSoup(r.text, 'html.parser')
         
-        # Meeting Script can be found only in the archive as it is publised after five years
-        # Archived before 2015
+        # Meeting Script can be found only in the archive as it is published after five years
+        if from_year > 2014:
+            print("Meeting scripts are available for 2014 or older")
         if from_year <= 2014:
             for year in range(from_year, 2015):
                 yearly_contents = []
@@ -70,19 +74,21 @@ class FomcMeetingScript(FomcBase):
 
         link_url = self.base_url + link
         article_date = self._date_from_link(link)
-
-        #print(link_url)
+        pdf_filepath = self.base_dir + 'script_pdf/FOMC_MeetingScript_' + article_date + '.pdf'
 
         # date of the article content
         self.dates.append(article_date)
 
         # Scripts are provided only in pdf. Save the pdf and pass the content
         res = requests.get(link_url)
-        pdf_filepath = self.base_dir + 'script_pdf/FOMC_MeetingScript_' + article_date + '.pdf'
         with open(pdf_filepath, 'wb') as f:
             f.write(res.content)
-        pdf_file_parsed = parser.from_file(pdf_filepath)
-        paragraphs = re.sub('(\n)(\n)+', '\n', pdf_file_parsed['content'].strip())
+
+        # Extract text from the pdf
+        # pdf_file_parsed = parser.from_file(pdf_filepath)
+        # paragraphs = re.sub('(\n)(\n)+', '\n', pdf_file_parsed['content'].strip())
+        pdf_file_parsed = textract.process(pdf_filepath).decode('utf-8')
+        paragraphs = re.sub('(\n)(\n)+', '\n', pdf_file_parsed.strip())
         paragraphs = paragraphs.split('\n')
 
         section = -1

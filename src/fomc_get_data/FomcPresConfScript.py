@@ -11,10 +11,12 @@ from bs4 import BeautifulSoup
 import numpy as np
 import pandas as pd
 
-# User TIKA for pdf parsing
-os.environ['TIKA_SERVER_JAR'] = 'https://repo1.maven.org/maven2/org/apache/tika/tika-server/1.19/tika-server-1.19.jar'
-import tika
-from tika import parser
+# Tika depends on Java version, so use textract instead as the pdf is anyway a simple text only
+# # User TIKA for pdf parsing
+# os.environ['TIKA_SERVER_JAR'] = 'https://repo1.maven.org/maven2/org/apache/tika/tika-server/1.19/tika-server-1.19.jar'
+# import tika
+# from tika import parser
+import textract
 
 # Import parent class
 from .FomcBase import FomcBase
@@ -58,13 +60,13 @@ class FomcPresConfScript(FomcBase):
         
         # Archived before 2015
         if from_year <= 2014:
+            print("Getting links from archive pages...")
             for year in range(from_year, 2015):
                 yearly_contents = []
                 fomc_yearly_url = self.base_url + '/monetarypolicy/fomchistorical' + str(year) + '.htm'
                 r_year = requests.get(fomc_yearly_url)
                 soup_yearly = BeautifulSoup(r_year.text, 'html.parser')
 
-                if self.verbose: print("Getting links for historical press conference scripts...")
                 presconf_hists = soup_yearly.find_all('a', href=re.compile('^/monetarypolicy/fomcpresconf\d{8}.htm'))
                 presconf_hist_urls = [self.base_url + presconf_hist.attrs['href'] for presconf_hist in presconf_hists]
                 for presconf_hist_url in presconf_hist_urls:
@@ -94,20 +96,22 @@ class FomcPresConfScript(FomcBase):
 
         link_url = self.base_url + link
         article_date = self._date_from_link(link)
-
-        #print(link_url)
+        pdf_filepath = self.base_dir + 'script_pdf/FOMC_PresConfScript_' + article_date + '.pdf'
 
         # date of the article content
         self.dates.append(article_date)
 
         # Scripts are provided only in pdf. Save the pdf and pass the content
         res = requests.get(link_url)
-        pdf_filepath = self.base_dir + 'script_pdf/FOMC_PresConfScript_' + article_date + '.pdf'
 
         with open(pdf_filepath, 'wb') as f:
             f.write(res.content)
-        pdf_file_parsed = parser.from_file(pdf_filepath)
-        paragraphs = re.sub('(\n)(\n)+', '\n', pdf_file_parsed['content'].strip())
+
+        # Extract text from the pdf
+        # pdf_file_parsed = parser.from_file(pdf_filepath)
+        # paragraphs = re.sub('(\n)(\n)+', '\n', pdf_file_parsed['content'].strip())
+        pdf_file_parsed = textract.process(pdf_filepath).decode('utf-8')
+        paragraphs = re.sub('(\n)(\n)+', '\n', pdf_file_parsed.strip())
         paragraphs = paragraphs.split('\n')
 
         section = -1
