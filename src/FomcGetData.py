@@ -8,6 +8,7 @@ from fomc_get_data.FomcMinutes import FomcMinutes
 from fomc_get_data.FomcMeetingScript import FomcMeetingScript
 from fomc_get_data.FomcPresConfScript import FomcPresConfScript
 from fomc_get_data.FomcSpeech import FomcSpeech
+from fomc_get_data.FomcTestimony import FomcTestimony
 
 def download_data(fomc, from_year):
     fomc.get_contents(from_year)
@@ -17,16 +18,19 @@ def download_data(fomc, from_year):
 if __name__ == '__main__':
     pg_name = sys.argv[0]
     args = sys.argv[1:]
-    content_type_all = ('statement', 'minutes', 'meeting_script', 'presconf_script', 'speech', 'all')
+    content_type_all = ('statement', 'minutes', 'meeting_script', 'presconf_script', 'speech', 'testimony', 'all')
 
-    if (len(args) != 1) or (len(args) != 2):
+    if (len(args) != 1) and (len(args) != 2):
         print("Usage: ", pg_name)
         print("Please specify the first argument from ", content_type_all)
         print("You can add from_year (yyyy) as the second argument.")
+        print("\n You specified: ", ','.join(args))
         sys.exit(1)
 
     if len(args) == 1:
         from_year = 1990
+    else:
+        from_year = int(args[1])
     
     content_type = args[0].lower()
     if content_type not in content_type_all:
@@ -50,6 +54,8 @@ if __name__ == '__main__':
         download_data(fomc, from_year)
         fomc = FomcSpeech()
         download_data(fomc, from_year)
+        fomc = FomcTestimony()
+        download_data(fomc, from_year)
     else:
         if content_type == 'statement':
             fomc = FomcStatement()
@@ -61,6 +67,8 @@ if __name__ == '__main__':
             fomc = FomcPresConfScript()
         elif content_type == 'speech':
             fomc = FomcSpeech()
+        elif content_type == 'testimony':
+            fomc = FomcTestimony()
 
         download_data(fomc, from_year)
 
