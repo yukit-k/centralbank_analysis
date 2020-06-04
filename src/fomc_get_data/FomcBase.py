@@ -128,6 +128,7 @@ class FomcBase(metaclass=ABCMeta):
             'title': self.titles
         }
         self.df = pd.DataFrame(dict).sort_values(by=['date'])
+        self.df.reset_index(drop=True, inplace=True)
         return self.df
 
     def pickle_dump_df(self, filename="output.pickle"):
