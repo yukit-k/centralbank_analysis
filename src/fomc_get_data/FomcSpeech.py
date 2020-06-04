@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime
 import threading
 import sys
 import os
@@ -23,6 +23,7 @@ class FomcSpeech(FomcBase):
     '''
     def __init__(self, verbose = True, max_threads = 10, base_dir = '../data/FOMC/'):
         super().__init__('speech', verbose, max_threads, base_dir)
+        self.speech_base_url = self.base_url + '/newsevents/speech'
 
     def _get_links(self, from_year):
         '''
@@ -30,14 +31,15 @@ class FomcSpeech(FomcBase):
          from from_year (=min(2015, from_year)) to the current most recent year
         '''
         self.links = []
-        self.title = []
-        self.speaker = []
+        self.titles = []
+        self.speakers = []
+        self.dates = []
 
         r = requests.get(self.calendar_url)
         soup = BeautifulSoup(r.text, 'html.parser')
 
         if self.verbose: print("Getting links for speeches...")
-        to_year = date.today().strftime("%Y")
+        to_year = datetime.today().strftime("%Y")
 
         if from_year <= 1995:
             print("Archive only from 1996, so setting from_year as 1996...")
@@ -58,7 +60,7 @@ class FomcSpeech(FomcBase):
                     continue
                 # Add links
                 self.links.append(speech_link.attrs['href'])
-                self.title.append(speech_link.get_text())
+                self.titles.append(speech_link.get_text())
                 # Somehow the speaker is before the link in 1997 only, whereas the others is vice-versa
                 if year == 1997:
                     # Somehow only the linke for December 15 speech has speader after the link in 1997 page.
@@ -74,7 +76,7 @@ class FomcSpeech(FomcBase):
                     # When a video icon is placed between the link and speaker
                     if tmp_speaker in ('Watch Live', 'Video'):
                         tmp_speaker = speech_link.parent.next_sibling.next_sibling.next_sibling.next_element.get_text().replace('\n', '').strip()
-                self.speaker.append(tmp_speaker)
+                self.speakers.append(tmp_speaker)
                 #print(tmp_speaker)
             if self.verbose: print("YEAR: {} - {} speeches found.".format(year, len(speech_links)))
 
@@ -89,12 +91,12 @@ class FomcSpeech(FomcBase):
             sys.stdout.flush()
 
         link_url = self.base_url + link
-        article_date = self._date_from_link(link)
+        date_str = self._date_from_link(link)
 
         #print(link_url)
 
         # date of the article content
-        self.dates.append(article_date)
+        self.dates.append(datetime.strptime(date_str, '%Y-%m-%d'))
 
         res = requests.get(self.base_url + link)
         html = res.text
