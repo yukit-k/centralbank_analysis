@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime
 import threading
 import sys
 import os
@@ -39,8 +39,9 @@ class FomcMeetingScript(FomcBase):
          from from_year (=min(2015, from_year)) to the current most recent year
         '''
         self.links = []
-        self.title = []
-        self.speaker = []
+        self.titles = []
+        self.speakers = []
+        self.dates = []
 
         r = requests.get(self.calendar_url)
         soup = BeautifulSoup(r.text, 'html.parser')
@@ -57,8 +58,8 @@ class FomcMeetingScript(FomcBase):
                 meeting_scripts = soup_yearly.find_all('a', href=re.compile('^/monetarypolicy/files/FOMC\d{8}meeting.pdf'))
                 for meeting_script in meeting_scripts:
                     self.links.append(meeting_script.attrs['href'])
-                    self.speaker.append(self._speaker_from_date(self._date_from_link(meeting_script.attrs['href'])))
-                    self.title.append('Meeting Transcript')
+                    self.speakers.append(self._speaker_from_date(self._date_from_link(meeting_script.attrs['href'])))
+                    self.titles.append('Meeting Transcript')
                 if self.verbose: print("YEAR: {} - {} meeting scripts found.".format(year, len(meeting_scripts)))
             print("There are total ", len(self.links), ' links for ', self.content_type)
 
@@ -73,11 +74,11 @@ class FomcMeetingScript(FomcBase):
             sys.stdout.flush()
 
         link_url = self.base_url + link
-        article_date = self._date_from_link(link)
-        pdf_filepath = self.base_dir + 'script_pdf/FOMC_MeetingScript_' + article_date + '.pdf'
+        date_str = self._date_from_link(link)
+        pdf_filepath = self.base_dir + 'script_pdf/FOMC_MeetingScript_' + date_str + '.pdf'
 
         # date of the article content
-        self.dates.append(article_date)
+        self.dates.append(datetime.strptime(date_str, '%Y-%m-%d'))
 
         # Scripts are provided only in pdf. Save the pdf and pass the content
         res = requests.get(link_url)

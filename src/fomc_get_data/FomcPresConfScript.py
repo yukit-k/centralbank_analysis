@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime
 import threading
 import sys
 import os
@@ -38,8 +38,9 @@ class FomcPresConfScript(FomcBase):
          from from_year (=min(2015, from_year)) to the current most recent year
         '''
         self.links = []
-        self.title = []
-        self.speaker = []
+        self.titles = []
+        self.speakers = []
+        self.dates = []
 
         r = requests.get(self.calendar_url)
         soup = BeautifulSoup(r.text, 'html.parser')
@@ -54,8 +55,8 @@ class FomcPresConfScript(FomcBase):
             for content in contents:
                 #print(content)
                 self.links.append(content.attrs['href'])
-                self.speaker.append(self._speaker_from_date(self._date_from_link(content.attrs['href'])))
-                self.title.append('Press Conference Transcript')
+                self.speakers.append(self._speaker_from_date(self._date_from_link(content.attrs['href'])))
+                self.titles.append('Press Conference Transcript')
         if self.verbose: print("{} links found in current page.".format(len(self.links)))
         
         # Archived before 2015
@@ -77,8 +78,8 @@ class FomcPresConfScript(FomcBase):
                     for yearly_content in yearly_contents:
                         #print(yearly_content)
                         self.links.append(yearly_content.attrs['href'])
-                        self.speaker.append(self._speaker_from_date(self._date_from_link(yearly_content.attrs['href'])))
-                        self.title.append('Press Conference Transcript')
+                        self.speakers.append(self._speaker_from_date(self._date_from_link(yearly_content.attrs['href'])))
+                        self.titles.append('Press Conference Transcript')
                 if self.verbose: print("YEAR: {} - {} links found.".format(year, len(presconf_hist_urls)))
             print("There are total ", len(self.links), ' links for ', self.content_type)
 
@@ -95,11 +96,11 @@ class FomcPresConfScript(FomcBase):
             sys.stdout.flush()
 
         link_url = self.base_url + link
-        article_date = self._date_from_link(link)
-        pdf_filepath = self.base_dir + 'script_pdf/FOMC_PresConfScript_' + article_date + '.pdf'
+        date_str = self._date_from_link(link)
+        pdf_filepath = self.base_dir + 'script_pdf/FOMC_PresConfScript_' + date_str + '.pdf'
 
         # date of the article content
-        self.dates.append(article_date)
+        self.dates.append(datetime.strptime(date_str, '%Y-%m-%d'))
 
         # Scripts are provided only in pdf. Save the pdf and pass the content
         res = requests.get(link_url)

@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime
 import threading
 import sys
 import os
@@ -30,8 +30,9 @@ class FomcMinutes(FomcBase):
          from from_year (=min(2015, from_year)) to the current most recent year
         '''
         self.links = []
-        self.title = []
-        self.speaker = []
+        self.titles = []
+        self.speakers = []
+        self.dates = []
 
         r = requests.get(self.calendar_url)
         soup = BeautifulSoup(r.text, 'html.parser')
@@ -41,8 +42,8 @@ class FomcMinutes(FomcBase):
         contents = soup.find_all('a', href=re.compile('^/monetarypolicy/fomcminutes\d{8}.htm'))
         
         self.links = [content.attrs['href'] for content in contents]
-        self.speaker = [self._speaker_from_date(self._date_from_link(x)) for x in self.links]
-        self.title = [self.content_type] * len(self.links)
+        self.speakers = [self._speaker_from_date(self._date_from_link(x)) for x in self.links]
+        self.titles = [self.content_type] * len(self.links)
         if self.verbose: print("{} links found in the current page.".format(len(self.links)))
 
         # Archived before 2015
@@ -56,9 +57,9 @@ class FomcMinutes(FomcBase):
                 yearly_contents = soup_yearly.find_all('a', href=re.compile('(^/monetarypolicy/fomcminutes|^/fomc/minutes|^/fomc/MINUTES)'))
                 for yearly_content in yearly_contents:
                     self.links.append(yearly_content.attrs['href'])
-                    self.speaker.append(self._speaker_from_date(self._date_from_link(yearly_content.attrs['href'])))
-                    self.title.append(self.content_type)
-            if self.verbose: print("YEAR: {} - {} links found.".format(year, len(yearly_contents)))
+                    self.speakers.append(self._speaker_from_date(self._date_from_link(yearly_content.attrs['href'])))
+                    self.titles.append(self.content_type)
+                if self.verbose: print("YEAR: {} - {} links found.".format(year, len(yearly_contents)))
         print("There are total ", len(self.links), ' links for ', self.content_type)
 
     def _add_article(self, link, index=None):
@@ -72,11 +73,11 @@ class FomcMinutes(FomcBase):
             sys.stdout.flush()
 
         link_url = self.base_url + link
-        article_date = self._date_from_link(link)
+        date_str = self._date_from_link(link)
         # print(link_url)
 
         # date of the article content
-        self.dates.append(article_date)
+        self.dates.append(datetime.strptime(date_str, '%Y-%m-%d'))
 
         res = requests.get(self.base_url + link)
         html = res.text

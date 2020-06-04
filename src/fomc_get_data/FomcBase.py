@@ -31,13 +31,12 @@ class FomcBase(metaclass=ABCMeta):
         self.links = None
         self.dates = None
         self.articles = None
-        self.speaker = None
-        self.title = None
+        self.speakers = None
+        self.titles = None
 
         # FOMC website URLs
         self.base_url = 'https://www.federalreserve.gov'
-        self.calendar_url = 'https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm'
-        self.speech_base_url = 'https://www.federalreserve.gov/newsevents/speech'
+        self.calendar_url = self.base_url + '/monetarypolicy/fomccalendars.htm'
 
         # FOMC Chairperson's list
         self.chair = pd.DataFrame(
@@ -48,7 +47,6 @@ class FomcBase(metaclass=ABCMeta):
             columns=["Surname", "FirstName", "FromDate", "ToDate"])
         
     def _date_from_link(self, link):
-        #print(link)
         date = re.findall('[0-9]{8}', link)[0]
         if date[4] == '0':
             date = "{}-{}-{}".format(date[:4], date[5:6], date[6:])
@@ -97,7 +95,7 @@ class FomcBase(metaclass=ABCMeta):
         if self.verbose:
             print("Getting articles - Multi-threaded...")
 
-        self.dates, self.articles = [], ['']*len(self.links)
+        self.articles = ['']*len(self.links)
         jobs = []
         # initiate and start threads:
         index = 0
@@ -124,11 +122,12 @@ class FomcBase(metaclass=ABCMeta):
         self._get_links(from_year)
         self._get_articles_multi_threaded()
         dict = {
+            'date': self.dates,
             'contents': self.articles,
-            'speaker': self.speaker, 
-            'title': self.title
+            'speaker': self.speakers, 
+            'title': self.titles
         }
-        self.df = pd.DataFrame(dict, index=pd.to_datetime(self.dates)).sort_index()
+        self.df = pd.DataFrame(dict).sort_values(by=['date'])
         return self.df
 
     def pickle_dump_df(self, filename="output.pickle"):
@@ -149,7 +148,7 @@ class FomcBase(metaclass=ABCMeta):
         tmp_dates = []
         tmp_seq = 1
         for i, row in self.df.iterrows():
-            cur_date = row.name.strftime('%Y-%m-%d')
+            cur_date = row['date'].strftime('%Y-%m-%d')
             if cur_date in tmp_dates:
                 tmp_seq += 1
                 filepath = self.base_dir + prefix + cur_date + "-" + str(tmp_seq) + ".txt"
