@@ -42,7 +42,8 @@ class FomcStatement(FomcBase):
         contents = soup.find_all('a', href=re.compile('^/newsevents/pressreleases/monetary\d{8}[ax].htm'))
         self.links = [content.attrs['href'] for content in contents]
         self.speakers = [self._speaker_from_date(self._date_from_link(x)) for x in self.links]
-        self.titles = [self.content_type] * len(self.links)
+        self.titles = ['FOMC Statement'] * len(self.links)
+        self.dates = [datetime.strptime(self._date_from_link(x), '%Y-%m-%d') for x in self.links]
         if self.verbose: print("{} links found in the current page.".format(len(self.links)))
 
         # Archived before 2015
@@ -57,7 +58,8 @@ class FomcStatement(FomcBase):
                 for yearly_content in yearly_contents:
                     self.links.append(yearly_content.attrs['href'])
                     self.speakers.append(self._speaker_from_date(self._date_from_link(yearly_content.attrs['href'])))
-                    self.titles.append(self.content_type)
+                    self.titles.append('FOMC Statement')
+                    self.dates.append(datetime.strptime(self._date_from_link(yearly_content.attrs['href']), '%Y-%m-%d'))
                 if self.verbose: print("YEAR: {} - {} links found.".format(year, len(yearly_contents)))
 
         print("There are total ", len(self.links), ' links for ', self.content_type)
@@ -71,12 +73,6 @@ class FomcStatement(FomcBase):
         if self.verbose:
             sys.stdout.write(".")
             sys.stdout.flush()
-
-        link_url = self.base_url + link
-        date_str = self._date_from_link(link)
-
-        # date of the article content
-        self.dates.append(datetime.strptime(date_str, '%Y-%m-%d'))
 
         res = requests.get(self.base_url + link)
         html = res.text

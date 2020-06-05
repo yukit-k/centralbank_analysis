@@ -56,7 +56,8 @@ class FomcPresConfScript(FomcBase):
                 #print(content)
                 self.links.append(content.attrs['href'])
                 self.speakers.append(self._speaker_from_date(self._date_from_link(content.attrs['href'])))
-                self.titles.append('Press Conference Transcript')
+                self.titles.append('FOMC Press Conference Transcript')
+                self.dates.append(datetime.strptime(self._date_from_link(content.attrs['href']), '%Y-%m-%d'))
         if self.verbose: print("{} links found in current page.".format(len(self.links)))
         
         # Archived before 2015
@@ -79,7 +80,8 @@ class FomcPresConfScript(FomcBase):
                         #print(yearly_content)
                         self.links.append(yearly_content.attrs['href'])
                         self.speakers.append(self._speaker_from_date(self._date_from_link(yearly_content.attrs['href'])))
-                        self.titles.append('Press Conference Transcript')
+                        self.titles.append('FOMC Press Conference Transcript')
+                        self.dates.append(datetime.strptime(self._date_from_link(yearly_content.attrs['href']), '%Y-%m-%d'))
                 if self.verbose: print("YEAR: {} - {} links found.".format(year, len(presconf_hist_urls)))
             print("There are total ", len(self.links), ' links for ', self.content_type)
 
@@ -96,11 +98,7 @@ class FomcPresConfScript(FomcBase):
             sys.stdout.flush()
 
         link_url = self.base_url + link
-        date_str = self._date_from_link(link)
-        pdf_filepath = self.base_dir + 'script_pdf/FOMC_PresConfScript_' + date_str + '.pdf'
-
-        # date of the article content
-        self.dates.append(datetime.strptime(date_str, '%Y-%m-%d'))
+        pdf_filepath = self.base_dir + 'script_pdf/FOMC_PresConfScript_' + self._date_from_link(link) + '.pdf'
 
         # Scripts are provided only in pdf. Save the pdf and pass the content
         res = requests.get(link_url)

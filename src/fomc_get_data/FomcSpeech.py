@@ -35,8 +35,8 @@ class FomcSpeech(FomcBase):
         self.speakers = []
         self.dates = []
 
-        r = requests.get(self.calendar_url)
-        soup = BeautifulSoup(r.text, 'html.parser')
+        res = requests.get(self.calendar_url)
+        soup = BeautifulSoup(res.text, 'html.parser')
 
         if self.verbose: print("Getting links for speeches...")
         to_year = datetime.today().strftime("%Y")
@@ -51,16 +51,20 @@ class FomcSpeech(FomcBase):
             else:
                 speech_url = self.speech_base_url + '/' + str(year) + '-speeches.htm'
 
-            r_speech = requests.get(speech_url)
-            soup_speech = BeautifulSoup(r_speech.text, 'html.parser')
-            speech_links = soup_speech.findAll('a', href=re.compile('^/?newsevents/speech/.*{}\d\d\d\d.*.htm|^/boarddocs/speeches/{}/|^{}\d\d\d\d.*.htm'.format(str(year), str(year), str(year))))
+            res = requests.get(speech_url)
+            soup = BeautifulSoup(res.text, 'html.parser')
+            speech_links = soup.findAll('a', href=re.compile('^/?newsevents/speech/.*{}\d\d\d\d.*.htm|^/boarddocs/speeches/{}/|^{}\d\d\d\d.*.htm'.format(str(year), str(year), str(year))))
             for speech_link in speech_links:
                 # Sometimes the same link is put for watch live video. Skip those.
                 if speech_link.find({'class': 'watchLive'}):
                     continue
-                # Add links
+
+                # Add link, title and date
                 self.links.append(speech_link.attrs['href'])
                 self.titles.append(speech_link.get_text())
+                self.dates.append(datetime.strptime(self._date_from_link(speech_link.attrs['href']), '%Y-%m-%d'))
+
+                # Add speaker
                 # Somehow the speaker is before the link in 1997 only, whereas the others is vice-versa
                 if year == 1997:
                     # Somehow only the linke for December 15 speech has speader after the link in 1997 page.
@@ -77,7 +81,6 @@ class FomcSpeech(FomcBase):
                     if tmp_speaker in ('Watch Live', 'Video'):
                         tmp_speaker = speech_link.parent.next_sibling.next_sibling.next_sibling.next_element.get_text().replace('\n', '').strip()
                 self.speakers.append(tmp_speaker)
-                #print(tmp_speaker)
             if self.verbose: print("YEAR: {} - {} speeches found.".format(year, len(speech_links)))
 
     def _add_article(self, link, index=None):
@@ -89,14 +92,6 @@ class FomcSpeech(FomcBase):
         if self.verbose:
             sys.stdout.write(".")
             sys.stdout.flush()
-
-        link_url = self.base_url + link
-        date_str = self._date_from_link(link)
-
-        #print(link_url)
-
-        # date of the article content
-        self.dates.append(datetime.strptime(date_str, '%Y-%m-%d'))
 
         res = requests.get(self.base_url + link)
         html = res.text
