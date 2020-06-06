@@ -74,4 +74,3 @@ if __name__ == '__main__':
             fomc = FomcTestimony()
 
         download_data(fomc, from_year)
-
