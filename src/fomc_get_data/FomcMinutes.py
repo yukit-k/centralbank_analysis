@@ -76,6 +76,7 @@ class FomcMinutes(FomcBase):
 
         res = requests.get(self.base_url + link)
         html = res.text
+
         # p tag is not properly closed in many cases
         html = html.replace('<P', '<p').replace('</P>', '</p>')
         html = html.replace('<p', '</p><p').replace('</p><p', '<p', 1)
@@ -87,13 +88,17 @@ class FomcMinutes(FomcBase):
             html += '</body></html>'
         # Parse html text by BeautifulSoup
         article = BeautifulSoup(html, 'html.parser')
-    
+
+        #if link == '/fomc/MINUTES/1994/19940517min.htm':
+        #    print(article)
+
         # Remove footnote
         for fn in article.find_all('a', {'name': re.compile('fn\d')}):
-            if fn.parent:
-                fn.parent.decompose()
-            else:
-                fn.decompose()
-            # Get all p tag
-            paragraphs = article.findAll('p')
-            self.articles[index] = "\n\n[SECTION]\n\n".join([paragraph.get_text().strip() for paragraph in paragraphs])
+            # if fn.parent:
+            #     fn.parent.decompose()
+            # else:
+            #     fn.decompose()
+            fn.decompose()
+        # Get all p tag
+        paragraphs = article.findAll('p')
+        self.articles[index] = "\n\n[SECTION]\n\n".join([paragraph.get_text().strip() for paragraph in paragraphs])
