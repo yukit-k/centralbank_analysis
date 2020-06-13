@@ -9,6 +9,11 @@
 
 ## 1. Installation
 Required libraries are described in requirements.txt. Please pip install those. The code should run with no issues using Python versions 3.*.
+1. Move to src directory
+   1. cd src
+2. Get data from FOMC Website. You can specify document type and from year.
+   1. e.g. python FomcGetData.py all
+3. 
 
 ## 2. Project Description
 ### 2.1 Business Understanding
@@ -52,7 +57,23 @@ The main findings of the code can be found at the post available here.
 -- To Do --
 
 ## File Description
--- To Do --
+* FomcGetCalendar.py - Scraping FOMC Website, create fomc_calendar to save in pickle and csv
+* FomcGetData.py - Calls relevant classes to get data from FOMC Website
+* fomc_get_data/FomcBase.py - Base abstract class to scrape FOMC Website to download text data
+* fomc_get_data/FomcStatement.py - Child class of FomcBase to retrieve statement texts
+* fomc_get_data/FomcMinutes.py - Child class of FomcBase to retrieve minutes texts
+* fomc_get_data/FomcPresConfScript.py - Child class of FomcBase to retrieve press conference script texts
+* fomc_get_data/FomcMeetingScript.py - Child class of FomcBase to retrieve meeting script texts
+* fomc_get_data/FomcSpeech.py - Child class of FomcBase to retrieve speech texts
+* fomc_get_data/FomcTestimony.py - Child class of FomcBase to retrieve testimonny texts
+* 1_FOMC_Analysis_Sentiment_Lexicon.ipynb - Jupyter notebook to briefly check statement sentiment
+* 2_FOMC_Analysis_Preprocess_NonText.ipynb - Jupytet notebook to preprocess calendar and market data (non text data)
+* 3_FOMC_Analysis_Preprocess_Text.ipynb - Jupyter notebook to preprocess text data downloaded from FOMC website
+
+The followings are used only for initial check and not required to run:
+* FOMC_analyse_website.ipynb
+* FOMC_analyse_website_2.ipynb
+* FOMC_check_FEDRate.ipynb
 
 ## Licensing, Authors, Acknowledgements
 Data attributes to FRED. Otherwise, feel free to use the code here as you would like!
