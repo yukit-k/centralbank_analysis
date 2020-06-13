@@ -133,3 +133,6 @@ data/
 
 # Reference
 reference/
+
+# Files not managed by this project
+tokenization.py

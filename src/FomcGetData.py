@@ -11,7 +11,10 @@ from fomc_get_data.FomcSpeech import FomcSpeech
 from fomc_get_data.FomcTestimony import FomcTestimony
 
 def download_data(fomc, from_year):
-    fomc.get_contents(from_year)
+    df = fomc.get_contents(from_year)
+    print("Shape of the downloaded data: ", df.shape)
+    print("The first 5 rows of the data: \n", df.head())
+    print("The last 5 rows of the data: \n", df.tail())
     fomc.pickle_dump_df(filename = fomc.content_type + ".pickle")
     fomc.save_texts(prefix = fomc.content_type + "/FOMC_" + fomc.content_type + "_")
 
@@ -71,4 +74,3 @@ if __name__ == '__main__':
             fomc = FomcTestimony()
 
         download_data(fomc, from_year)
-

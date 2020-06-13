@@ -59,7 +59,8 @@ class FomcMeetingScript(FomcBase):
                 for meeting_script in meeting_scripts:
                     self.links.append(meeting_script.attrs['href'])
                     self.speakers.append(self._speaker_from_date(self._date_from_link(meeting_script.attrs['href'])))
-                    self.titles.append('Meeting Transcript')
+                    self.titles.append('FOMC Meeting Transcript')
+                    self.dates.append(datetime.strptime(self._date_from_link(meeting_script.attrs['href']), '%Y-%m-%d'))
                 if self.verbose: print("YEAR: {} - {} meeting scripts found.".format(year, len(meeting_scripts)))
             print("There are total ", len(self.links), ' links for ', self.content_type)
 
@@ -74,11 +75,7 @@ class FomcMeetingScript(FomcBase):
             sys.stdout.flush()
 
         link_url = self.base_url + link
-        date_str = self._date_from_link(link)
-        pdf_filepath = self.base_dir + 'script_pdf/FOMC_MeetingScript_' + date_str + '.pdf'
-
-        # date of the article content
-        self.dates.append(datetime.strptime(date_str, '%Y-%m-%d'))
+        pdf_filepath = self.base_dir + 'script_pdf/FOMC_MeetingScript_' + self._date_from_link(link) + '.pdf'
 
         # Scripts are provided only in pdf. Save the pdf and pass the content
         res = requests.get(link_url)
