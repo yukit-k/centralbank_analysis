@@ -135,8 +135,12 @@ if __name__ == '__main__':
             date_text_ext = re.findall(regex, date_text)[0]
             meeting_date_str = date_text_ext[4] + "-" + date_text_ext[0] + "-" + date_text_ext[2]
             #print("   Extracted:", meeting_date_str)
-            if meeting_date_str == '1995-January-1':
+            if meeting_date_str == '1992-June-1':
+                meeting_date_str = '1992-July-1'
+            elif meeting_date_str == '1995-January-1':
                 meeting_date_str = '1995-February-1'
+            elif meeting_date_str == '1998-June-1':
+                meeting_date_str = '1998-July-1'
             elif meeting_date_str == '2012-July-1':
                 meeting_date_str = '2012-August-1'
             elif meeting_date_str == '2013-April-1':

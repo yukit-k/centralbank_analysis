@@ -61,6 +61,24 @@ class FomcMinutes(FomcBase):
                     self.speakers.append(self._speaker_from_date(self._date_from_link(yearly_content.attrs['href'])))
                     self.titles.append('FOMC Meeting Minutes')
                     self.dates.append(datetime.strptime(self._date_from_link(yearly_content.attrs['href']), '%Y-%m-%d'))
+                    # Sometimes minutes carries the first day of the meeting before 2000, so update them to the 2nd day
+                    if self.dates[-1] == datetime(1996,1,30):
+                        self.dates[-1] = datetime(1996,1,31)
+                    elif self.dates[-1] == datetime(1996,7,2):
+                        self.dates[-1] = datetime(1996,7,3)
+                    elif self.dates[-1] == datetime(1997,2,4):
+                        self.dates[-1] = datetime(1997,2,5)
+                    elif self.dates[-1] == datetime(1997,7,1):
+                        self.dates[-1] = datetime(1997,7,2)
+                    elif self.dates[-1] == datetime(1998,2,3):
+                        self.dates[-1] = datetime(1998,2,4)
+                    elif self.dates[-1] == datetime(1998,6,30):
+                        self.dates[-1] = datetime(1998,7,1)
+                    elif self.dates[-1] == datetime(1999,2,2):
+                        self.dates[-1] = datetime(1999,2,3)
+                    elif self.dates[-1] == datetime(1999,6,29):
+                        self.dates[-1] = datetime(1999,6,30)
+
                 if self.verbose: print("YEAR: {} - {} links found.".format(year, len(yearly_contents)))
         print("There are total ", len(self.links), ' links for ', self.content_type)
 
