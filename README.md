@@ -134,32 +134,99 @@ Next, preprocess nontext meta data. Do necessary calculations and add to the cal
 
 #### 3_FOMC_Analysis_Preprocess_Text.ipynb
 ##### Input: 
-
+* ../data/preprocessed/fomc_calendar.pickle
+* ../data/FOMC/statement.pickle
+* ../data/FOMC/minutes.pickle
+* ../data/FOMC/meeting_script.pickle
+* ../data/FOMC/presconf_script.pickle
+* ../data/FOMC/speech.pickle
+* ../data/FOMC/testimony.pickle
 ##### Output: 
+* ../data/preprocessed/text_no_split
+* ../data/preprocessed/text_split_200
+* ../data/preprocessed/text_keyword
 
 ##### Process: 
+1. Add QE announcement to statement
+2. Add Rate and Decision to Statement, Minutes, Meeting Script and Presconf Script
+3. Add Word Count, Next Meeting Date, Next Meeting Rate and Next Meeting Decision to all inputs
+4. Remove return code and separate text by sections
+5. Remove short sections - having less number of words that threshold as it is unlikely to hold good information
+6. Split text of Step 5 to maximum of 200 words with 50 words overlap
+7. Filter text of Step 5 for those having keyword at least 2 times only
 
 #### 4_FOMC_Analysis_EDA_NonText.ipynb
 ##### Input: 
-
+* ../data/preprocessed/nontext_data.pickle
+* ../data/preprocessed/nontext_ma2.pickle
+* ../data/preprocessed/nontext_ma3.pickle
+* ../data/preprocessed/nontext_ma6.pickle
+* ../data/preprocessed/nontext_ma12.pickle
 ##### Output: 
+* ../data/train_data/nontext_train_small
+* ../data/train_data/nontext_train_large
 
 ##### Process: 
+1. Check correlation to find good feature to predict Rate Decision
+2. Check correlation of moving average to Rate Decision
+3. Check correlation of calculated rates and changes by taylor rules
+4. Compare distribution of each feature between Rate Decision
+5. Fill missing values
+6. Create small dataset with selected 9 features and large dataset, which contains all
 
 ### 2.4 Modelling
 #### 5_FOMC_Analysis_ML_NonText.ipynb
 ##### Input: 
-
+* ../data/train_data/nontext_train_small.pickle or
+* ../data/train_data/nontext_train_large.pickle
 ##### Output: 
+* ../data/result/result_scores
+* ../data/result/baseline_predictions
+* ../data/result/training_data
 
 ##### Process: 
-
+1. Balancing the classes
+2. Convert the target to integer starting from 0
+3. Train test split
+4. Apply 14 different classifiers to see how they perform
+5. Build and run random search and grid search cross validation models for the following classifiers
+   1. ADA Boost on Decision Tree
+   2. Extra Tree
+   3. Random Forest
+   4. Gradient Boosting
+   5. Support Vector Machine
+6. Check Feature Importance
+7. Build and run Ensemble models
+   1. Voting Classifier
+   2. Stacking by XG Boost
 #### 6_FOMC_Analysis_ML_Text.ipynb
 ##### Input: 
+* ../data/train_data/nontext_train_small.pickle
+* ../data/preprocessed/text_no_split
+* ../data/preprocessed/text_split_200
+* ../data/preprocessed/text_keyword
+* ../data/LoughranMcDonald/LoughranMcDonald_SentimentWordLists_2018.csv
 
 ##### Output: 
+* ../train_data/train_df
+* ../train_data/text_df
+* ../train_data/split_train_df
 
 ##### Process: 
+1. Check the record count, drop meeting scripts
+2. Select which text to use and merge the text to nontext train dataframe
+3. View text by creating corpus to see word frequencies
+4. Load LoughranMcDonald Sentiment word list and analyze the sentiment of each text
+5. Lemmatize, remove stop words, tokenize texts as well as sentiment word
+6. Vectorize the text by Tfidf
+7. Calculate Cosine Similarity and add difference from the previous text
+8. Convert the target to integer starting from 0, use Stratified KFold
+9. Model A - Use Cosine Similarity for Random Forest
+10. Model B - Use Tfidf vector and merge with meta data to perform Random Forest
+11. Model C - Use LSTM (RNN) based text analysis, then merge with meta data at the last dense layer
+12. Model D - Use GloVe Word Embedding for Model C
+13. Further split of training data to max 200 words with 50 words overlap and perform Model D again
+14. Model E - User BERT, then merge with meta data at the last dense layer
 
 ### 2.5 Evaluation
 The outcome of the analysis are summarised as follows.
