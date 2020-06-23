@@ -129,7 +129,7 @@ dmypy.json
 .pyre/
 
 # Data directory
-data/
+# data/
 
 # Reference
 reference/
