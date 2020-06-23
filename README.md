@@ -230,7 +230,14 @@ Next, preprocess nontext meta data. Do necessary calculations and add to the cal
 
 ### 2.5 Evaluation
 The outcome of the analysis are summarised as follows.
--- To Do --
+We examined whether FOMC text data contains useful insight to predict the FED target rate decision (i.e. Raise, Hold or Lower) at the next FOMC meeting.
+The data is imbalanced to have more than 60% as Hold, that is. no rate change, therefore we used F1 score in addition to accuracy to measure the performance.
+First, we took major economic indices to predict the FOMC decision using various classification algorithms.
+Some estimator simply fail to overfit to train data and failed in test data. Others just predict most of the result as Hold, which is natural from accuracy perspective. As a result of grid search cross validation, Random Forest performed the best with Accuracy of 0.625 and f1 (macro) score of 0.497. Also tried ensembling methods such as voting classifier but did not perform well.
+Then, we took text data to build ML model with the non-text economic indices above, then train and performed the learning.  A model using cosine similarity of Tfidf vectors on Loughran McDonald sentiment vocabulary was promissing, achieved Accuracy of 0.67 with F1 score of 0.53. Cosine similarity on Negative word list was used as once of important feature in the model. Then we tried Tfidf itself but only achieved Accuary 0.5 and F1 score 0.39.
+To improve the performance of text understanding, we then tried RNN - LSTM with fully connected layer with the non-text data inputs at the end. The result was Accuracy of 0.54 and F1 score of 0.38 - in fact there are too less number of training data to train neural network. We only used the first 200 words where each text is avarage 10,000 words length!
+To mitigate this, we then split the text by 200 words with 50 words overlap - one drawback of this approach is the non-text part of inputs are repeated many times and not representing actual frequency any more. The result was Accuracy of 0.64 and F1 score of 0.43. We also tried BERT to represent the text latent features but could not improve the overall performance.
+As a conclusion, we could observe some useful information in the text to predict FOMC decision better. However, we could not improve the text based prediction performance by Neural Network. This is partly because there are small number of test data to train with each text very long. This can be potentially improved by splitting text more appropriately for relevant content with proper labelling.
 
 ### 2.6 Deployment
 No deployment as of now but the main findings of the code can be found in each notebook.
