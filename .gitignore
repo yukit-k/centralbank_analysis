@@ -135,9 +135,16 @@ data/result
 data/train_data
 data/FinancialPhraseBank-v1.0
 data/preprocessed
+data/models/
 
 # Reference
 reference/
+
+# Log
+log_model.txt
+
+# vscode
+.vscode
 
 # Files not managed by this project
 tokenization.py
