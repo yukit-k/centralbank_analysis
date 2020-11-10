@@ -1,9 +1,5 @@
 import datetime
-import numpy as np
-import pandas as pd
-import pickle
-import sys
-import os
+import sys, os
 import quandl
 
 def download_data(quandl_code, from_date):
@@ -17,9 +13,9 @@ def download_data(quandl_code, from_date):
 if __name__ == '__main__':
     pg_name = sys.argv[0]
     args = sys.argv[1:]
-    fred_all = ('DFEDTAR', 'DFEDTARL', 'DFEDTARU', 'DFF', 'GDPC1', 'GDPPOT', 'PCEPILFE', 'CPIAUCSL', 'UNRATE', 'PAYEMS')
+    fred_all = ('DFEDTAR', 'DFEDTARL', 'DFEDTARU', 'DFF', 'GDPC1', 'GDPPOT', 'PCEPILFE', 'CPIAUCSL', 'UNRATE', 'PAYEMS', 'RRSFS', 'HSN1F')
     ism_all = ('MAN_PMI', 'NONMAN_NMI')
-    treasury_all = ('YIELD')
+    treasury_code = 'USTREASURY/YIELD'
 
     if (len(args) != 2) and (len(args) != 3):
         print("Usage: python {} api_key from_date [Quandl Code]".format(pg_name))
@@ -48,7 +44,6 @@ if __name__ == '__main__':
             download_data("FRED/" + dataset_code, from_date)
         for dataset_code in ism_all:
             download_data("ISM/" + dataset_code, from_date)
-        for dataset_code in treasury_all:
-            download_data("USTREASURY/" + dataset_code, from_date)
+        download_data(treasury_code, from_date)
     else:
         download_data(quandl_code, from_date)
