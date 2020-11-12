@@ -137,7 +137,7 @@ data/FinancialPhraseBank-v1.0
 data/preprocessed
 data/models/
 data/LoughranMcDonald
-data/MarketDate
+data/MarketData
 
 # Reference
 reference/
