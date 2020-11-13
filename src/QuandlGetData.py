@@ -20,7 +20,7 @@ if __name__ == '__main__':
     if (len(args) != 2) and (len(args) != 3):
         print("Usage: python {} api_key from_date [Quandl Code]".format(pg_name))
         print("   api_key: Copy from your Quandl Account")
-        print("   from_date: Specify the start date in yyyymmdd format")
+        print("   from_date: Specify the start date in yyyy-mm-dd format")
         print("   Quandl Code: Optional to Specify Target. (e.g. FRED/DFEDTAR) If not specified, all data are downloaded.")
         print("\n You specified: ", ','.join(args))
         sys.exit(1)
