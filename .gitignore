@@ -129,7 +129,14 @@ dmypy.json
 .pyre/
 
 # Data directory
-data/
+data/FOMC
+data/LoughranMcDonald
+data/result
+data/train_data
+data/GloVe
+data/MarketData
+data/preprocessed
+data/tmp
 
 # Reference
 reference/
