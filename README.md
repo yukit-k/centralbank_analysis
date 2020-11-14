@@ -25,8 +25,8 @@ pip install -r requirements.tx
 #### Download input data
 1. Create data directory
    ```
-   mkdir data && cd $_
-   mkdir FOMC MarketData LoughranMcDonald GloVe preprocessed models train_data result
+   cd data
+   mkdir FOMC MarketData LoughranMcDonald GloVe preprocessed train_data result
    cd FOMC
    mkdir statement minutes presconf_script meeting_script script_pdf speech testimony chair
    cd ../MarketData
@@ -43,12 +43,20 @@ pip install -r requirements.tx
 6. Download Sentiment Dictionary in data/LoughranMcDonald directory in csv
    * Loughran and McDonald Sentiment Word Lists (https://sraf.nd.edu/textual-analysis/resources/) 
 
-#### To Run Notebook
+#### To Run Notebook (Local)
+
 1. Go to top directory
    `cd ../`
 2. Run the jupyter notebooks 
    `jupyter notebook`
 3. Open and run notebooks No.1 to No.8 for analysis
+
+#### To Run Notebook (Google Colab)
+All notebooks can be executed on Google Colab. 
+1. Upload notebooks to your Google Drive
+2. Upload downloaded data to your Google Drive (Colab Data dir)
+3. Execute each notebook (Note: You need to authorize the access to your Google Drive when asked to input the code)
+
 
 ## 3. Data Understanding
 Text data is scraped from FOMC Website. Other economic and market data are downloaded from FRB of St. Louis website (FRED)
@@ -225,15 +233,47 @@ Next, preprocess nontext meta data. Do necessary calculations and add to the cal
 13. Further split of training data to max 200 words with 50 words overlap and perform Model D again
 14. Model E - User BERT, then merge with meta data at the last dense layer
 
-#### 7_FOMC_Analysis_Sentence.ipynb
+#### 7_FOMC_Analysis_By_Sentence.ipynb
 ##### Input: 
-* ../train_data/train_df.pickle
 * ../data/preprocessed/text_no_split.pickle
-* ../data/preprocessed/text_split_200.pickle
 * ../data/preprocessed/text_keyword.pickle
-* ../data/model/finphrase_model_fold_3.dict
+* ../data/models/finphrase_bert_trained.dict
+* ../train_data/train_df.pickle
 
 ##### Output: 
+* ../train_data/sentiment_bert_result
+* ../train_data/sentiment_bert_all
+* ../train_data/sentiment_bert_stmt
+* ../train_data/sentiment_bert_minutes
+* ../train_data/sentiment_bert_presconf
+* ../train_data/sentiment_bert_m_script
+* ../train_data/sentiment_bert_speech
+* ../train_data/sentiment_bert_testimony
+
+##### Process: 
+1. Check the record count, combine meeting scripts by speaker
+2. Split each text by sentence
+3. Load a trained BERT model and run prediction
+4. Count the number of sentences per predicted sentiment for each FOMC Meeting
+5. Visualize the result
+6. Combine the result with Non-text data
+7. Perform the same machine learning as the baseline model
+
+#### 8_FOMC_Analysis_Summary.ipynb
+##### Input:
+* ../data/preprocessed/fomc_calendar.pickle
+* ../data/preprocessed/nontext_data.pickle
+* ../data/preprocessed/text_no_split.pickle
+* ../data/train_data/train_df.pickle
+* ../data/FOMC/statement.pickle
+
+##### Input:
+1. Visualize FED Rate
+2. Visualize Economic Indices
+3. Visualize FOMC Text
+4. Visualize Sentiment
+5. Visualize Correlation, Taylor Rule
+6. Visualize the final result
 
 ### Other Files
 * FomcGetCalendar.py - From FOMC Website, create fomc_calendar to save in pickle and csv
