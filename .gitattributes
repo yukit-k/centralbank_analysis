@@ -1,2 +1,0 @@
-*.dict filter=lfs diff=lfs merge=lfs -text
-data/models/finphrase_bert_trained.dict filter=lfs diff=lfs merge=lfs -text
