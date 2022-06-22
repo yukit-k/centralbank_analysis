@@ -1,6 +1,6 @@
 bs4==0.0.1
 textract==1.6.3
-numpy==1.19.4
+numpy==1.22.0
 pandas==1.1.4
 requests==2.24.0
 tqdm==4.51.0
