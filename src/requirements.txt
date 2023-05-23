@@ -2,7 +2,7 @@ bs4==0.0.1
 textract==1.6.3
 numpy==1.19.4
 pandas==1.1.4
-requests==2.24.0
+requests==2.31.0
 tqdm==4.51.0
 nltk==3.5
 quandl==3.5.3
