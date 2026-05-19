@@ -40,10 +40,10 @@ class FomcBase(metaclass=ABCMeta):
 
         # FOMC Chairperson's list
         self.chair = pd.DataFrame(
-            data=[["Greenspan", "Alan", "1987-08-11", "2006-01-31"], 
-                  ["Bernanke", "Ben", "2006-02-01", "2014-01-31"], 
+            data=[["Greenspan", "Alan", "1987-08-11", "2006-01-31"],
+                  ["Bernanke", "Ben", "2006-02-01", "2014-01-31"],
                   ["Yellen", "Janet", "2014-02-03", "2018-02-03"],
-                  ["Powell", "Jerome", "2018-02-05", "2022-02-05"]],
+                  ["Powell", "Jerome", "2018-02-05", "2026-05-15"]],
             columns=["Surname", "FirstName", "FromDate", "ToDate"])
         
     def _date_from_link(self, link):

@@ -1,11 +1,12 @@
 # FedSpeak — How to build a NLP pipeline to predict central bank policy changes
 
 ## Table of Contents
-1. Project Description
-2. Installation
-3. Data Understanding
-4. Code Description
-5. Licensing, Authors, Acknowledgements
+1. [Project Description](#1-project-description)
+2. [Getting Started](#2-getting-started)
+3. [Data Understanding](#3-data-understanding)
+4. [Code Description](#4-code-description)
+5. [Changelog](#5-changelog)
+6. [Licensing, Authors, Acknowledgements](#6-licensing-authors-acknowledgements)
 
 ## 1. Project Description
 Posted a Medium Blog here:
@@ -13,289 +14,297 @@ https://yuki678.medium.com/fedspeak-how-to-build-a-nlp-pipeline-to-predict-centr
 
 Please refer to the post for business understanding, project overview and analysis result.
 
-## 2. Installation
-#### Libraries
-Required libraries are described in requirements.txt. The code should run with no issues using Python versions 3.6+.
-Create a virtual environment of your choice. Here uses Anaconda:
+## 2. Getting Started
+
+### Requirements
+
+- Python 3.11+
+- macOS: `brew install libomp` (required for XGBoost)
+
+### Installation
+
+```bash
+# Create and activate a virtual environment
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+
+# Install dependencies
+pip install -r src/requirements.txt
+
+# Download NLTK data (required by notebooks 1 and 6-7)
+python3 -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab'); nltk.download('stopwords')"
 ```
-conda create -n fomc python=3.6 jupyter
-conda activate fomc
-pip install -r requirements.tx
-```
-#### Download input data
-1. Create data directory
-   ```
+
+> **Conda alternative:**
+> ```bash
+> conda create -n fomc python=3.11 jupyter
+> conda activate fomc
+> pip install -r src/requirements.txt
+> ```
+
+### Download Input Data
+
+1. Create the data directory structure:
+   ```bash
    cd data
-   mkdir FOMC MarketData LoughranMcDonald GloVe preprocessed train_data result
-   cd FOMC
-   mkdir statement minutes presconf_script meeting_script script_pdf speech testimony chair
-   cd ../MarketData
-   mkdir Quandl
+   mkdir -p FOMC/statement FOMC/minutes FOMC/presconf_script \
+            FOMC/meeting_script FOMC/speech FOMC/testimony \
+            MarketData/Quandl LoughranMcDonald GloVe \
+            preprocessed train_data result models
+   cd ..
    ```
-2. Move to src directory
-   `cd ../../src`
-3. Get data from FOMC Website. Specify document type. You can also specify from year.
-   `python FomcGetData.py all 1980`
-4. Get calendar from FOMC Website. Specify from year.
-   `python FomcGetCalendar.py 1980`
-5. Get data from Quandl. Specify your API Key and From Date (yyyy-mm-dd). You can specify Quandl Code, otherwise all required data are downloaded.
-   `python QuandlGetData.py [your API Key] 1980-01-01`
-6. Download Sentiment Dictionary in data/LoughranMcDonald directory in csv
-   * Loughran and McDonald Sentiment Word Lists (https://sraf.nd.edu/textual-analysis/resources/) 
 
-#### To Run Notebook (Local)
+2. Scrape text data from the FOMC website (specify document type and start year):
+   ```bash
+   cd src
+   python FomcGetData.py all 1980
+   python FomcGetCalendar.py 1980
+   ```
 
-1. Go to top directory
-   `cd ../`
-2. Run the jupyter notebooks 
-   `jupyter notebook`
-3. Open and run notebooks No.1 to No.8 for analysis
+3. Download economic data from FRED (St. Louis Fed). The original project used Quandl;
+   the FRED API is now the preferred alternative. Download the following CSV files from
+   https://fred.stlouisfed.org/ and place them in `data/MarketData/Quandl/`:
 
-#### To Run Notebook (Google Colab)
-All notebooks can be executed on Google Colab. 
-1. Upload notebooks to your Google Drive
-2. Upload downloaded data to your Google Drive (Colab Data dir)
-3. Execute each notebook (Note: You need to authorize the access to your Google Drive when asked to input the code)
+   | File | Series | Frequency |
+   |---|---|---|
+   | `FRED_DFEDTAR.csv` | Federal Funds Target Rate (pre-2008) | Daily |
+   | `FRED_DFEDTARU.csv` | Federal Funds Target Rate Upper (post-2008) | Daily |
+   | `FRED_DFEDTARL.csv` | Federal Funds Target Rate Lower (post-2008) | Daily |
+   | `FRED_DFF.csv` | Effective Federal Funds Rate | Daily |
+   | `FRED_GDPC1.csv` | Real GDP | Quarterly |
+   | `FRED_GDPPOT.csv` | Real Potential GDP | Quarterly |
+   | `FRED_PCEPILFE.csv` | Core PCE | Monthly |
+   | `FRED_CPIAUCSL.csv` | CPI | Monthly |
+   | `FRED_UNRATE.csv` | Unemployment Rate | Monthly |
+   | `FRED_PAYEMS.csv` | Total Nonfarm Employment | Monthly |
+   | `FRED_RRSFS.csv` | Advance Retail Sales | Monthly |
+   | `FRED_HSN1F.csv` | New Home Sales | Monthly |
+   | `ISM_MAN_PMI.csv` | ISM Manufacturing PMI | Monthly |
+   | `ISM_NONMAN_NMI.csv` | ISM Non-Manufacturing Index | Monthly |
 
+4. Download the Loughran-McDonald Sentiment Word List CSV from
+   https://sraf.nd.edu/textual-analysis/resources/ and place it in
+   `data/LoughranMcDonald/`.
+
+5. Download GloVe word vectors (used in notebook 6):
+   https://nlp.stanford.edu/projects/glove/ — place `glove.6B.50d.txt` and
+   `glove.6B.100d.txt` in `data/GloVe/`.
+
+### Run the Notebooks
+
+```bash
+# From the repo root
+jupyter notebook
+```
+
+Open notebooks **1 through 8** in order. Each notebook reads outputs produced by
+the previous one, so they must be run sequentially.
+
+| Notebook | Description | Est. runtime |
+|---|---|---|
+| `1_FOMC_Analysis_Preliminary.ipynb` | Sentiment analysis on statements | < 1 min |
+| `2_FOMC_Analysis_Preprocess_NonText.ipynb` | Preprocess economic data | < 1 min |
+| `3_FOMC_Analysis_Preprocess_Text.ipynb` | Preprocess text data | 2–5 min |
+| `4_FOMC_Analysis_EDA_FE_NonText.ipynb` | EDA and feature engineering | < 1 min |
+| `5_FOMC_Analysis_Baseline.ipynb` | Baseline ML models (sklearn, XGBoost) | 10–30 min |
+| `6_FOMC_Analysis_Model_Train.ipynb` | LSTM and BERT model training | Hours (GPU recommended) |
+| `7_FOMC_Analysis_By_Sentence.ipynb` | Sentence-level BERT sentiment scoring | Hours (GPU recommended) |
+| `8_FOMC_Analysis_Summary.ipynb` | Summary visualisations | < 1 min |
+
+> **GPU note:** Notebooks 6 and 7 train deep learning models (LSTM, BERT). On CPU they
+> may take several hours; a CUDA-capable GPU is strongly recommended.
+>
+> **Google Colab:** All notebooks support Colab. Upload them and the data to Google Drive
+> and set `IN_COLAB = True` at the top of each notebook.
+
+### Notebook 7 — Pre-trained BERT Model
+
+Notebook 7 uses a FinancialPhraseBank fine-tuned BERT model. The file
+`data/models/finphrase_bert_trained.dict` is stored in Git LFS and may not be present.
+The notebook will fall back to `data/tmp/finphrase_bert_trained_2.dict` if available,
+and otherwise use the base `bert-base-uncased` weights.
+
+---
 
 ## 3. Data Understanding
-Text data is scraped from FOMC Website. Other economic and market data are downloaded from FRB of St. Louis website (FRED)
-Data used for each prediction are only those available before the meeting.
+Text data is scraped from the FOMC website. Economic and market data are downloaded from
+the FRB of St. Louis (FRED) database. Data used for each prediction includes only
+information available before the meeting date.
 
 #### Text Data
-* FOMC/fomc_calendar.pickle - all FOMC calendar dates
-* FOMC/statement.pickle - Statement text along with basic attributes such as dates, speaker, title. Each text is also available in the directory with the same name. Statements are available post press conference for almost all meetings, which include rate decision and target rate. From 2008, target rate became a range instead of a single value.
-* FOMC/minutes.pickle - Minutes text along with basic attributes such as dates, speaker, title. Each text is also available
- in the directory with the same name. Minutes are summary of FOMC Meeting and contents are structured in sections and paragraphs, most of which were updated in 2011 and 2012. The minutes of regularly scheduled meetings are released three weeks after the date of the policy decision.
-* FOMC/presconf_script.pickle - Press conference scripts text along with basic attributes such as dates, speaker, title. Each text is also available in the directory with the same name. This is available from 2011. Starting with the speaker name, so extract those spoken by the chairperson because the other person's words are more likely to be questions and not FOMC's view. It is in pdf form, so download pdf and then process the text.
-* FOMC/meeting_script.pickle - Meeting scripts text along with basic attributes such as dates, speaker, title. Each text is also available in the directory with the same name. FOMC decided to publish this five years after each meeting. It contains all the words spoken during the meeting. It will contain some insight about FOMC discussions and how the consensus about monetary policy is built, but cannot be used in prediction as this is not published for five years.  It is in pdf form, so download pdf and then process the text.
-* FOMC/speech.pickle -  Speech text along with basic attributes such as dates, speaker, title. Each text is also available in the directory with the same name. There are many speeches published but some of them are not related to monetary policies but various topics such as regulations and governance. Some speeches may contain indication of FOMC policy, so use only those by the chairperson.
-* FOMC/testimony.pickle -  Testimony text along with basic attributes such as dates, speaker, title. Each text is also available in the directory with the same name. Like speeches, testimony is not necessarily related to monetary policy. There are semi-annual testimony in the congress, which can be a good inputs of FOMC's view by chairperson, so use only those by the chairperson.
+* `FOMC/fomc_calendar.pickle` — all FOMC calendar dates
+* `FOMC/statement.pickle` — FOMC statement text with date, speaker, and title. Each text is also saved as a `.txt` file. Statements include the rate decision and target rate. From 2008, the target rate became a range instead of a single value.
+* `FOMC/minutes.pickle` — Minutes text with date, speaker, and title. Minutes are structured in sections; released three weeks after each meeting.
+* `FOMC/presconf_script.pickle` — Press conference transcript text. Available from 2011. Filtered to chairperson's words only.
+* `FOMC/meeting_script.pickle` — Full meeting transcript text. Published five years after each meeting. Not usable for live prediction.
+* `FOMC/speech.pickle` — Chairperson speech text.
+* `FOMC/testimony.pickle` — Chairperson congressional testimony text.
 
 #### Market Data
-In MarketData/Quandl, csv is saved with Quandl Code as the file name.
-* FED Rate
-  * FRED_DFEDTAR.csv - Target FED Rate till 2008, Daily
-  * FRED_DFEDTARU.csv - Target Upper FED Rate from 2008, Daily
-  * FRED_DFEDTARL.csv - Target Lower FED Rate from 2008, Daily
-  * FRED_DFF.csv - Effective FED Rate, Daily
-* GDP
-  * FRED_GDPC1.csv - Real GDP, Quarterly
-  * FRED_GDPPOT.csv - Real potential GDP, Quarterly
-* CPI
-  * FRED_PCEPILFE.csv - Core PCE excluding Food and Energy, Monthly
-  * FRED_CPIAUCSL.csv - Consumer Price Index for All Urban Consumers: All Items in U.S. City Average
-* Employment
-  * FRED_UNRATE.csv - Unemployment Rate, Monthly
-  * FRED_PAYEMS.csv - Employment, Monthly
-* Sales
-  * FRED_RRSFS.csv - Advance Real Retail and Food Services Sales, monthly
-  * FRED_HSN1F.csv - New Home Sales, monthly
-* ISM
-  * ISM_MAN_PMI.csv - ISM Purchasing Managers Index
-  * ISM_NONMAN_NMI.csv - ISM Non-manufacturing Index
-* Treasury
-  * USTREASURY_YIELD.csv - This is optional as not used in the final analysis.
+Files are in `MarketData/Quandl/`, named by FRED series code. See the table in
+[Download Input Data](#download-input-data) for the full list.
 
 #### Loughran-McDonald Dictionary
-* LoughranMcDonald/LoughranMcDonald_SentimentWordLists_2018.csv - This is used in preliminary analysis and creating Tfidf vectors.
+* `LoughranMcDonald/LoughranMcDonald_SentimentWordLists_2018.csv` — used in the
+  preliminary analysis and for building TF-IDF sentiment feature vectors.
+
+---
 
 ## 4. Code Description
-#### 1_FOMC_Analysis_Preliminary.ipynb
-First, take a glance at the FOMC statement to see if it contains any meaningful information.
-##### Input: 
-* ../data/FOMC/statement.pickle
-* ../data/MarketData/Quandl/FRED_DFEDTAR.csv
-* ../data/MarketData/Quandl/FRED_DFEDTARU.csv
-* ../data/MarketData/Quandl/FRED_DFEDTARL.csv
-##### Output:
-* None
-##### Process:
-1. Analyze sentiment of the statement text using Loughran and McDonald Sentiment Word Lists
-2. Plot sentiment (count of positive words with negation, negative words and net over time series, normalized by the number of words
-3. Load FED Rate, map the rate and decision to statement
-4. Plot the moving average of the sentiment along with FED rate and recession period
-5. Plot the same with Quantitative Easing and Chairpersons
 
-#### 2_FOMC_Analysis_Preprocess_NonText.ipynb
-Next, preprocess nontext meta data. Do necessary calculations and add to the calendar dataframe to map those latest available indices as input to the FOMC Fed rate decision.
+#### `1_FOMC_Analysis_Preliminary.ipynb`
+**Input:** `FOMC/statement.pickle`, FED rate CSVs  
+**Output:** plots only  
+**Process:**
+1. Analyze statement sentiment using the Loughran-McDonald word list
+2. Plot positive/negative word counts and net sentiment over time
+3. Map FED rate and rate decisions to each statement date
+4. Overlay sentiment moving average with FED rate and recession periods
+5. Annotate Quantitative Easing events and chairperson tenures
 
-##### Input: 
-* ../data/FOMC/fomc_calendar.pickle
-* All Market Data and Economic Indices
-##### Output:
-* ../data/preprocessed/nontext_data
-* ../data/preprocessed/nontext_ma2
-* ../data/preprocessed/nontext_ma3
-* ../data/preprocessed/nontext_ma6
-* ../data/preprocessed/nontext_ma12
-* ../data/preprocessed/treasury
-* ../data/preprocessed/fomc_calendar
-##### Process:
-1. Load and plot all numerical data
-2. Add FED Rate and rate decisions to FOMC Meeting Calendar
-3. Add QE as Lowering event and Tapering as Raising event
-4. Add the economic indices to the FOMC Meeting Calendar
-5. Calculate Taylor rule
-6. Calculate moving average
-7. Save data
+#### `2_FOMC_Analysis_Preprocess_NonText.ipynb`
+**Input:** `FOMC/fomc_calendar.pickle`, all market data CSVs  
+**Output:** `preprocessed/nontext_data`, `nontext_ma2/3/6/12`, `treasury`, `fomc_calendar`  
+**Process:**
+1. Load and plot all numerical economic indices
+2. Add FED rate and rate decisions to the FOMC meeting calendar
+3. Mark QE announcements as lowering events and tapering as raising events
+4. Attach the most-recently-available economic indices to each meeting date
+5. Calculate Taylor rule variants
+6. Calculate moving averages
 
-#### 3_FOMC_Analysis_Preprocess_Text.ipynb
-##### Input: 
-* ../data/preprocessed/fomc_calendar.pickle
-* ../data/FOMC/statement.pickle
-* ../data/FOMC/minutes.pickle
-* ../data/FOMC/meeting_script.pickle
-* ../data/FOMC/presconf_script.pickle
-* ../data/FOMC/speech.pickle
-* ../data/FOMC/testimony.pickle
-##### Output: 
-* ../data/preprocessed/text_no_split
-* ../data/preprocessed/text_split_200
-* ../data/preprocessed/text_keyword
+#### `3_FOMC_Analysis_Preprocess_Text.ipynb`
+**Input:** `fomc_calendar.pickle`, all FOMC text pickles  
+**Output:** `preprocessed/text_no_split`, `text_split_200`, `text_keyword`  
+**Process:**
+1. Add QE announcement to the statement corpus
+2. Attach rate and decision labels to each document
+3. Add word count, next-meeting date, next-meeting rate and decision
+4. Clean text (strip section markers, newlines)
+5. Split long documents into 200-word windows with 50-word overlap
+6. Filter to paragraphs containing policy keywords (≥ 2 occurrences)
 
-##### Process: 
-1. Add QE announcement to statement
-2. Add Rate and Decision to Statement, Minutes, Meeting Script and Presconf Script
-3. Add Word Count, Next Meeting Date, Next Meeting Rate and Next Meeting Decision to all inputs
-4. Remove return code and separate text by sections
-5. Remove short sections - having less number of words that threshold as it is unlikely to hold good information
-6. Split text of Step 5 to maximum of 200 words with 50 words overlap
-7. Filter text of Step 5 for those having keyword at least 2 times only
+#### `4_FOMC_Analysis_EDA_FE_NonText.ipynb`
+**Input:** `preprocessed/nontext_data.pickle`, moving average pickles  
+**Output:** `train_data/nontext_train_small`, `nontext_train_large`  
+**Process:**
+1. Correlation analysis to identify predictive features
+2. Compare feature distributions across rate-decision classes
+3. Impute missing values
+4. Build a small dataset (9 selected features) and a large one (all features)
 
-#### 4_FOMC_Analysis_EDA_FE_NonText.ipynb
-##### Input: 
-* ../data/preprocessed/nontext_data.pickle
-* ../data/preprocessed/nontext_ma2.pickle
-* ../data/preprocessed/nontext_ma3.pickle
-* ../data/preprocessed/nontext_ma6.pickle
-* ../data/preprocessed/nontext_ma12.pickle
-##### Output: 
-* ../data/train_data/nontext_train_small
-* ../data/train_data/nontext_train_large
+#### `5_FOMC_Analysis_Baseline.ipynb`
+**Input:** `train_data/nontext_train_small.pickle`  
+**Output:** `result/result_scores`, `baseline_predictions`, `training_data`  
+**Process:**
+1. Balance classes (Hold / Raise / Lower)
+2. Train/test split (shuffle=False to preserve time order)
+3. Benchmark 14 classifiers with stratified k-fold cross-validation
+4. Hyperparameter search (random + grid) for AdaBoost, ExtraTrees, RandomForest,
+   GradientBoosting, and SVM
+5. Feature importance analysis
+6. Ensemble models: VotingClassifier and XGBoost stacking
 
-##### Process: 
-1. Check correlation to find good feature to predict Rate Decision
-2. Check correlation of moving average to Rate Decision
-3. Check correlation of calculated rates and changes by taylor rules
-4. Compare distribution of each feature between Rate Decision
-5. Fill missing values
-6. Create small dataset with selected 9 features and large dataset, which contains all
+#### `6_FOMC_Analysis_Model_Train.ipynb`
+**Input:** `train_data/nontext_train_small.pickle`, text pickles, LoughranMcDonald CSV  
+**Output:** trained model files  
+**Process:**
+1. Merge text and non-text data; explore word frequencies
+2. Sentiment scoring via TF-IDF against the LM word list
+3. Lemmatize, tokenize, and vectorize text
+4. Model A — Cosine similarity features → RandomForest
+5. Model B — TF-IDF + meta → RandomForest
+6. Model C — LSTM with meta concatenation
+7. Model D — GloVe embeddings + LSTM + meta
+8. Model E — BERT + meta
 
-#### 5_FOMC_Analysis_Baseline.ipynb
-##### Input: 
-* ../data/train_data/nontext_train_small.pickle or
-* ../data/train_data/nontext_train_large.pickle
-##### Output: 
-* ../data/result/result_scores
-* ../data/result/baseline_predictions
-* ../data/result/training_data
+#### `7_FOMC_Analysis_By_Sentence.ipynb`
+**Input:** `preprocessed/text_no_split.pickle`, `text_keyword.pickle`,
+pre-trained BERT model, `train_data/train_df.pickle`  
+**Output:** `train_data/fomc_sentiment_bert_*`  
+**Process:**
+1. Split each document into sentences
+2. Score each sentence with a FinancialPhraseBank fine-tuned BERT model
+3. Aggregate sentence-level sentiment counts per meeting
+4. Combine with non-text features and re-run baseline ML models
 
-##### Process: 
-1. Balancing the classes
-2. Convert the target to integer starting from 0
-3. Train test split
-4. Apply 14 different classifiers to see how they perform
-5. Build and run random search and grid search cross validation models for the following classifiers
-   1. ADA Boost on Decision Tree
-   2. Extra Tree
-   3. Random Forest
-   4. Gradient Boosting
-   5. Support Vector Machine
-6. Check Feature Importance
-7. Build and run Ensemble models
-   1. Voting Classifier
-   2. Stacking by XG Boost
+#### `8_FOMC_Analysis_Summary.ipynb`
+**Input:** all preprocessed pickles, `train_data/train_df.pickle`,
+`FOMC/statement.pickle`  
+**Output:** summary plots  
+**Process:**
+1. Visualize FED rate history and chairperson tenures
+2. Plot economic indices (GDP, CPI, employment, PMI, …)
+3. Visualize FOMC text characteristics (word count, document type distribution)
+4. Overlay sentiment scores with rate decisions
+5. Correlation heatmaps and Taylor rule comparison
+6. Final model performance comparison
 
-#### 6_FOMC_Analysis_Model_Train.ipynb
-##### Input: 
-* ../data/train_data/nontext_train_small.pickle
-* ../data/preprocessed/text_no_split.pickle
-* ../data/preprocessed/text_split_200.pickle
-* ../data/preprocessed/text_keyword.pickle
-* ../data/LoughranMcDonald/LoughranMcDonald_SentimentWordLists_2018.csv
+### Helper Scripts
+| File | Purpose |
+|---|---|
+| `FomcGetData.py` | Scrapes all FOMC document types from the website |
+| `FomcGetCalendar.py` | Builds the FOMC meeting calendar pickle |
+| `QuandlGetData.py` | Legacy: downloads market data via Quandl API |
+| `fomc_get_data/FomcBase.py` | Abstract base class for FOMC web scrapers |
+| `fomc_get_data/FomcStatement.py` | Scraper for FOMC statements |
+| `fomc_get_data/FomcMinutes.py` | Scraper for minutes |
+| `fomc_get_data/FomcPresConfScript.py` | Scraper for press-conference transcripts |
+| `fomc_get_data/FomcMeetingScript.py` | Scraper for meeting transcripts |
+| `fomc_get_data/FomcSpeech.py` | Scraper for speeches |
+| `fomc_get_data/FomcTestimony.py` | Scraper for testimonies |
 
-##### Output: 
+The following notebooks are exploratory prototypes and not part of the main pipeline:
+`FOMC_analyse_website.ipynb`, `FOMC_analyse_website_2.ipynb`,
+`FOMC_check_FEDRate.ipynb`, `FOMC_Analysis_BERT_MultiSampleDropoutModel.ipynb`,
+`FOMC_Analysis_BERT_Tensorflow.ipynb`, `FOMC_Post_Training_BERT.ipynb`,
+`FOMC_Text_Summarization.ipynb`.
 
-##### Process: 
-1. Check the record count, drop meeting scripts
-2. Select which text to use and merge the text to nontext train dataframe
-3. View text by creating corpus to see word frequencies
-4. Load LoughranMcDonald Sentiment word list and analyze the sentiment of each text
-5. Lemmatize, remove stop words, tokenize texts as well as sentiment word
-6. Vectorize the text by Tfidf
-7. Calculate Cosine Similarity and add difference from the previous text
-8. Convert the target to integer starting from 0, use Stratified KFold
-9. Model A - Use Cosine Similarity for Random Forest
-10. Model B - Use Tfidf vector and merge with meta data to perform Random Forest
-11. Model C - Use LSTM (RNN) based text analysis, then merge with meta data at the last dense layer
-12. Model D - Use GloVe Word Embedding for Model C
-13. Further split of training data to max 200 words with 50 words overlap and perform Model D again
-14. Model E - User BERT, then merge with meta data at the last dense layer
+---
 
-#### 7_FOMC_Analysis_By_Sentence.ipynb
-##### Input: 
-* ../data/preprocessed/text_no_split.pickle
-* ../data/preprocessed/text_keyword.pickle
-* ../data/models/finphrase_bert_trained.dict
-* ../train_data/train_df.pickle
+## 5. Changelog
 
-##### Output: 
-* ../train_data/sentiment_bert_result
-* ../train_data/sentiment_bert_all
-* ../train_data/sentiment_bert_stmt
-* ../train_data/sentiment_bert_minutes
-* ../train_data/sentiment_bert_presconf
-* ../train_data/sentiment_bert_m_script
-* ../train_data/sentiment_bert_speech
-* ../train_data/sentiment_bert_testimony
+### 2026-05 — Library upgrade to modern versions
 
-##### Process: 
-1. Check the record count, combine meeting scripts by speaker
-2. Split each text by sentence
-3. Load a trained BERT model and run prediction
-4. Count the number of sentences per predicted sentiment for each FOMC Meeting
-5. Visualize the result
-6. Combine the result with Non-text data
-7. Perform the same machine learning as the baseline model
+The entire codebase was updated from its original 2020-era dependencies to work with
+current library versions. All core notebooks (1–5, 8) now execute without errors on
+Python 3.11.
 
-#### 8_FOMC_Analysis_Summary.ipynb
-##### Input:
-* ../data/preprocessed/fomc_calendar.pickle
-* ../data/preprocessed/nontext_data.pickle
-* ../data/preprocessed/text_no_split.pickle
-* ../data/train_data/train_df.pickle
-* ../data/FOMC/statement.pickle
+**Dependencies updated** (`src/requirements.txt`):
 
-##### Input:
-1. Visualize FED Rate
-2. Visualize Economic Indices
-3. Visualize FOMC Text
-4. Visualize Sentiment
-5. Visualize Correlation, Taylor Rule
-6. Visualize the final result
+| Package | Old | New |
+|---|---|---|
+| numpy | 1.19.4 | ≥ 1.26 |
+| pandas | 1.1.4 | ≥ 2.2 |
+| scikit-learn | 0.23 | ≥ 1.6 |
+| seaborn | 0.11.0 | ≥ 0.13 |
+| torch | 1.7.0 | ≥ 2.6 |
+| transformers | 3.5.0 | ≥ 4.40 |
+| xgboost | 1.2.1 | ≥ 2.0 |
+| matplotlib | (implicit) | ≥ 3.9 |
+| lxml, python-dateutil, scipy | missing | added |
+| textract, quandl | listed | removed (unmaintained / deprecated) |
 
-### Other Files
-* FomcGetCalendar.py - From FOMC Website, create fomc_calendar to save in pickle and csv
-* FomcGetData.py - Calls relevant classes to get data from FOMC Website
-* QuandlGetData.py - Get market data from Quandl.
-* fomc_get_data/FomcBase.py - Base abstract class to scrape FOMC Website to download text data
-* fomc_get_data/FomcStatement.py - Child class of FomcBase to retrieve statement texts
-* fomc_get_data/FomcMinutes.py - Child class of FomcBase to retrieve minutes texts
-* fomc_get_data/FomcPresConfScript.py - Child class of FomcBase to retrieve press conference script texts
-* fomc_get_data/FomcMeetingScript.py - Child class of FomcBase to retrieve meeting script texts
-* fomc_get_data/FomcSpeech.py - Child class of FomcBase to retrieve speech texts
-* fomc_get_data/FomcTestimony.py - Child class of FomcBase to retrieve testimonny texts
+**Breaking API fixes applied:**
 
-The followings are used only for initial check and not required to run:
-* FOMC_analyse_website.ipynb
-* FOMC_analyse_website_2.ipynb
-* FOMC_check_FEDRate.ipynb
-* FOMC_Analysis_BERT_MultiSampleDropoutModel.ipynb
-* FOMC_Analysis_BERT_Tensorflow.ipynb
-* FOMC_Post_Training_BERT.ipynb
-* FOMC_Text_Summarization.ipynb
+- **seaborn 0.13:** `sns.distplot` → `sns.histplot`; positional barplot args → keyword args; style `'seaborn-whitegrid'` → `'seaborn-v0_8-whitegrid'`
+- **sklearn 1.2–1.8:** `plot_confusion_matrix` → `ConfusionMatrixDisplay.from_estimator`; `get_feature_names()` → `get_feature_names_out()`; `base_estimator` → `estimator` in AdaBoost; `algorithm='SAMME.R'` removed; `loss='deviance'` → `'log_loss'`
+- **numpy 2.0:** `np.float(x)` → `float(x)`
+- **pandas 2.0:** `DataFrame.append()` → `pd.concat()`; nullable `Int64` dtype with `pd.NA` handled before plotting
+- **matplotlib 3.9:** string dates in `ax.set_xlim()` / `ax.annotate()` replaced with `pd.Timestamp()`
+- **XGBoost 3.x:** `nthread` → `n_jobs`; `LabelEncoder` added for 0-indexed multi-class labels
+- **PyTorch 2.6:** `torch.load(..., weights_only=False)` added where full checkpoints are loaded
+- **scikit-plot 0.3.7:** patched `scipy.interp` → `numpy.interp` (removed in scipy 1.14)
+- **tqdm:** `from tqdm import tqdm_notebook` → `from tqdm.notebook import tqdm`
+- **FomcBase.py:** Powell's chairmanship end date updated (reappointed 2022)
 
-## 5. Licensing, Authors, Acknowledgements
-Data attributes to the source (FRED, ISM, US Treasury and Quandl). Loughran McDonald dictionary attributes to https://sraf.nd.edu/textual-analysis/resources/ in University of Notre Dame.
-Feel free to use the source code as you would like!
+**System dependency:** macOS users must run `brew install libomp` for XGBoost support.
+
+---
+
+## 6. Licensing, Authors, Acknowledgements
+Data is sourced from FRED (Federal Reserve Bank of St. Louis), ISM, US Treasury, and Quandl.
+The Loughran-McDonald sentiment dictionary is from https://sraf.nd.edu/textual-analysis/resources/
+at the University of Notre Dame.
+
+Feel free to use the source code as you like!
